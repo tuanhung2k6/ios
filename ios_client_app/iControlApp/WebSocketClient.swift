@@ -16,6 +16,11 @@ class WebSocketClient: NSObject {
     private var isScriptRunning = false
     private var backgroundTaskId: UIBackgroundTaskIdentifier = .invalid
     
+    // Auto-reconnect state
+    private var reconnectTimer: Timer?
+    private var reconnectAttempt = 0
+    private let maxReconnectAttempts = 30
+    
     private override init() {
         super.init()
         setupMockUdid()
@@ -26,6 +31,9 @@ class WebSocketClient: NSObject {
         // Listen for background state transitions
         NotificationCenter.default.addObserver(self, selector: #selector(handleDidEnterBackground), name: UIApplication.didEnterBackgroundNotification, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(handleWillEnterForeground), name: UIApplication.willEnterForegroundNotification, object: nil)
+        
+        // Enable battery monitoring
+        UIDevice.current.isBatteryMonitoringEnabled = true
     }
     
     private func setupMockUdid() {
@@ -38,23 +46,44 @@ class WebSocketClient: NSObject {
         }
     }
     
-    func connect(ip: String, port: String = "3000") {
+    func connect(ip: String, port: String = "9898") {
         self.serverIP = ip
         self.serverPort = port
-        
-        guard let url = URL(string: "ws://\(ip):\(port)") else {
-            print("[WebSocketClient] Invalid URL format.")
-            return }
-        
-        print("[WebSocketClient] Connecting to \(url.absoluteString)...")
-        let session = URLSession(configuration: .default, delegate: self, delegateQueue: OperationQueue())
+        reconnectAttempt = 0
+        reconnectTimer?.invalidate()
+        reconnectTimer = nil
+        _performConnect()
+    }
+    
+    private func _performConnect() {
+        webSocket?.cancel(with: .goingAway, reason: nil)
+        guard let url = URL(string: "ws://\(serverIP):\(serverPort)") else { return }
+        print("[WebSocketClient] Connecting to \(url.absoluteString)... (attempt \(reconnectAttempt + 1))")
+        let config = URLSessionConfiguration.default
+        config.timeoutIntervalForRequest = 10
+        let session = URLSession(configuration: config, delegate: self, delegateQueue: OperationQueue())
         webSocket = session.webSocketTask(with: url)
         webSocket?.resume()
-        
         listenForMessages()
     }
     
+    private func scheduleReconnect() {
+        guard reconnectAttempt < maxReconnectAttempts else {
+            FloatingWindow.shared.addLog("Max reconnect attempts reached. Tap Connect to retry.")
+            return
+        }
+        reconnectAttempt += 1
+        let delay = min(Double(reconnectAttempt) * 2.0, 15.0) // exponential back-off, max 15s
+        FloatingWindow.shared.addLog("Reconnecting in \(Int(delay))s... (attempt \(reconnectAttempt))")
+        reconnectTimer = Timer.scheduledTimer(withTimeInterval: delay, repeats: false) { [weak self] _ in
+            self?._performConnect()
+        }
+    }
+    
     func disconnect() {
+        reconnectTimer?.invalidate()
+        reconnectTimer = nil
+        reconnectAttempt = maxReconnectAttempts // prevent auto reconnect
         webSocket?.cancel(with: .goingAway, reason: nil)
         isConnected = false
         FloatingWindow.shared.setStatus(online: false)
@@ -65,10 +94,13 @@ class WebSocketClient: NSObject {
             guard let self = self else { return }
             switch result {
             case .failure(let error):
-                print("[WebSocketClient] Error receiving: \(error.localizedDescription)")
-                self.isConnected = false
-                FloatingWindow.shared.setStatus(online: false)
-                FloatingWindow.shared.addLog("Disconnected from server.")
+                print("[WebSocketClient] Receive error: \(error.localizedDescription)")
+                DispatchQueue.main.async {
+                    self.isConnected = false
+                    FloatingWindow.shared.setStatus(online: false)
+                    FloatingWindow.shared.addLog("Server disconnected. Auto reconnecting...")
+                    self.scheduleReconnect()
+                }
             case .success(let message):
                 switch message {
                 case .string(let text):
@@ -82,9 +114,7 @@ class WebSocketClient: NSObject {
                 }
                 
                 // Keep listening
-                if self.isConnected {
-                    self.listenForMessages()
-                }
+                self.listenForMessages()
             }
         }
     }
@@ -100,10 +130,12 @@ class WebSocketClient: NSObject {
                 
                 if type == "run_script" {
                     if let script = json["script"] as? String, let name = json["name"] as? String {
-                        self.runScript(content: script, name: name)
+                        DispatchQueue.main.async { self.runScript(content: script, name: name) }
                     }
                 } else if type == "stop_script" {
-                    self.stopCurrentScript()
+                    DispatchQueue.main.async { self.stopCurrentScript() }
+                } else if type == "request_screenshot" {
+                    DispatchQueue.main.async { self.captureAndSendScreenshot() }
                 }
             }
         } catch {
@@ -114,9 +146,13 @@ class WebSocketClient: NSObject {
     // MARK: - Device Info & Registration
     
     func registerDevice() {
-        let name = UIDevice.current.name
-        let model = UIDevice.current.model
+        reconnectAttempt = 0 // reset on successful registration
+        let device = UIDevice.current
+        let name = device.name
+        let model = device.model
         let ipAddress = getWiFiAddress() ?? "Unknown IP"
+        let iosVersion = device.systemVersion
+        let battery = Int(device.batteryLevel * 100)
         
         let registerPayload: [String: Any] = [
             "type": "register_device",
@@ -124,7 +160,10 @@ class WebSocketClient: NSObject {
                 "udid": mockUdid,
                 "name": name,
                 "model": model,
-                "ip": ipAddress
+                "ip": ipAddress,
+                "ios_version": iosVersion,
+                "battery": battery >= 0 ? battery : 100,
+                "vnc_port": NSNull() // set real VNC port if using Veency
             ]
         ]
         
@@ -132,7 +171,27 @@ class WebSocketClient: NSObject {
         
         isConnected = true
         FloatingWindow.shared.setStatus(online: true)
-        FloatingWindow.shared.addLog("Connected to server. Registered as: \(name)")
+        FloatingWindow.shared.addLog("\u2705 Connected as \(name) [iOS \(iosVersion)] · \(ipAddress)")
+    }
+    
+    // MARK: - Screenshot Capture & Send
+    
+    func captureAndSendScreenshot() {
+        guard let window = UIApplication.shared.windows.first else { return }
+        let renderer = UIGraphicsImageRenderer(bounds: window.bounds)
+        let image = renderer.image { ctx in
+            window.drawHierarchy(in: window.bounds, afterScreenUpdates: true)
+        }
+        guard let jpegData = image.jpegData(compressionQuality: 0.55) else { return }
+        let base64 = jpegData.base64EncodedString()
+        
+        let payload: [String: Any] = [
+            "type": "screenshot",
+            "imageBase64": base64,
+            "width": Int(window.bounds.width),
+            "height": Int(window.bounds.height)
+        ]
+        sendJSON(payload)
     }
     
     func sendDeviceStatus(status: String) {
