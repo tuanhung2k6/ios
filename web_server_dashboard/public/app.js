@@ -22,7 +22,7 @@ const clearConsoleBtn = document.getElementById('btn-clear-console');
 // Connect to Server WebSocket
 function connectWebSocket() {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const host = window.location.host || 'localhost:3000';
+    const host = window.location.host || 'localhost:9898';
     ws = new WebSocket(`${protocol}//${host}`);
 
     ws.onopen = () => {

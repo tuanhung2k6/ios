@@ -59,7 +59,7 @@ class ViewController: UIViewController {
         portLabel.frame = CGRect(x: 30, y: 260, width: self.view.frame.width - 60, height: 20)
         self.view.addSubview(portLabel)
         
-        portTextField.placeholder = "3000"
+        portTextField.placeholder = "9898"
         portTextField.backgroundColor = UIColor(red: 20/255, green: 26/255, blue: 42/255, alpha: 1.0)
         portTextField.textColor = .white
         portTextField.borderStyle = .roundedRect
@@ -93,7 +93,7 @@ class ViewController: UIViewController {
     
     private func loadSavedSettings() {
         let savedIP = UserDefaults.standard.string(forKey: "iControl_server_ip") ?? "192.168.1.100"
-        let savedPort = UserDefaults.standard.string(forKey: "iControl_server_port") ?? "3000"
+        let savedPort = UserDefaults.standard.string(forKey: "iControl_server_port") ?? "9898"
         
         ipTextField.text = savedIP
         portTextField.text = savedPort
@@ -103,7 +103,7 @@ class ViewController: UIViewController {
         self.view.endEditing(true)
         
         guard let ip = ipTextField.text, !ip.isEmpty else { return }
-        let port = portTextField.text ?? "3000"
+        let port = (portTextField.text?.isEmpty ?? true) ? "9898" : portTextField.text!
         
         // Save settings
         UserDefaults.standard.set(ip, forKey: "iControl_server_ip")

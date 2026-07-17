@@ -8,7 +8,7 @@ const app = express();
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 9898;
 const SCRIPTS_DIR = path.join(__dirname, 'saved_scripts');
 
 // Ensure scripts directory exists
