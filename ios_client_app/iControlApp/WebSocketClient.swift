@@ -300,7 +300,7 @@ extension WebSocketClient: URLSessionWebSocketDelegate {
         self.registerDevice()
     }
     
-    func urlSession(_ session: URLSession, webSocketTask: URLSessionWebSocketTask, didCloseWith closeCode: URLSessionWebSocketCloseCode, reason: Data?) {
+    func urlSession(_ session: URLSession, webSocketTask: URLSessionWebSocketTask, didCloseWith closeCode: URLSessionWebSocketTask.CloseCode, reason: Data?) {
         print("[WebSocketClient] Connection closed.")
         self.isConnected = false
         FloatingWindow.shared.setStatus(online: false)

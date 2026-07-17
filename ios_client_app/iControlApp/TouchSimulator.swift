@@ -22,7 +22,7 @@ class TouchSimulator {
         ]
         
         for path in paths {
-            if let handle = dlopen(path, RTLD_NOW) {
+            if dlopen(path, RTLD_NOW) != nil {
                 print("[TouchSimulator] Loaded PTFakeTouch successfully from: \(path)")
                 ptFakeTouchLoaded = true
                 break
