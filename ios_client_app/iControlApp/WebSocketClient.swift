@@ -130,7 +130,9 @@ class WebSocketClient: NSObject {
                 
                 if type == "run_script" {
                     if let script = json["script"] as? String, let name = json["name"] as? String {
-                        DispatchQueue.main.async { self.runScript(content: script, name: name) }
+                        let loopCount = json["loopCount"] as? Int ?? 1
+                        let loopDelay = json["loopDelay"] as? Double ?? 0.0
+                        DispatchQueue.main.async { self.runScript(content: script, name: name, loopCount: loopCount, loopDelay: loopDelay) }
                     }
                 } else if type == "stop_script" {
                     DispatchQueue.main.async { self.stopCurrentScript() }
@@ -228,24 +230,45 @@ class WebSocketClient: NSObject {
         }
     }
     
-    // MARK: - Lua Script Runner Engine (Skeletal Execution simulation)
+    // MARK: - Lua Script Runner Engine
     
-    private func runScript(content: String, name: String) {
-        print("[WebSocketClient] Running script: \(name)")
-        self.sendLog(message: "Bắt đầu chạy script: \(name)")
+    // Loop control state
+    private var loopCount: Int = 1       // total loops (0 = infinite)
+    private var loopDelay: Double = 0.0  // seconds between loops
+    private var currentLoop: Int = 0
+    private var scriptContent: String = ""
+    private var scriptNameCache: String = ""
+    
+    private func runScript(content: String, name: String, loopCount: Int = 1, loopDelay: Double = 0.0) {
+        print("[WebSocketClient] Running script: \(name) (loops=\(loopCount), delay=\(loopDelay)s)")
+        self.scriptContent = content
+        self.scriptNameCache = name
+        self.loopCount = loopCount
+        self.loopDelay = loopDelay
+        self.currentLoop = 0
+        
+        self.sendLog(message: "Bắt đầu chạy script: \(name)\(loopCount > 1 ? " (\(loopCount) lần lặp)" : "")")
         self.sendDeviceStatus(status: "running")
         FloatingWindow.shared.setStatus(online: true, running: true)
         
-        // Stop any running script
         scriptRunnerTimer?.invalidate()
-        
-        // In a real Tweak environment, we write script to disk and run with Lua interpreter.
-        // Let's parser lines looking for basic commands (tap, swipe, sleep, appRun, log)
-        // to execute them dynamically for demonstration and verification.
-        
-        self.scriptLines = content.components(separatedBy: .newlines)
+        runNextLoop()
+    }
+    
+    private func runNextLoop() {
+        guard isScriptRunning == false || currentLoop == 0 else { return }
+        let infinite = loopCount == 0
+        if !infinite && currentLoop >= loopCount {
+            self.sendLog(message: "Hoàn tất \(currentLoop) vòng lặp.")
+            self.sendDeviceStatus(status: "online")
+            FloatingWindow.shared.setStatus(online: true, running: false)
+            self.isScriptRunning = false
+            return
+        }
+        currentLoop += 1
+        if loopCount > 1 { self.sendLog(message: "Vòng \(currentLoop)\(infinite ? "" : "/\(loopCount)")...") }
+        self.scriptLines = scriptContent.components(separatedBy: .newlines)
         self.isScriptRunning = true
-        
         executeLine(at: 0)
     }
     
@@ -253,10 +276,25 @@ class WebSocketClient: NSObject {
         guard isScriptRunning else { return }
         
         if index >= scriptLines.count {
-            self.sendLog(message: "Kịch bản thực thi hoàn tất.")
-            self.sendDeviceStatus(status: "online")
-            FloatingWindow.shared.setStatus(online: true, running: false)
-            self.isScriptRunning = false
+            // Script finished one loop
+            let infinite = loopCount == 0
+            let moreLoops = infinite || currentLoop < loopCount
+            if moreLoops && isScriptRunning {
+                isScriptRunning = false
+                if loopDelay > 0 {
+                    self.sendLog(message: "Chờ \(loopDelay)s trước vòng tiếp...")
+                    DispatchQueue.main.asyncAfter(deadline: .now() + loopDelay) { [weak self] in
+                        self?.runNextLoop()
+                    }
+                } else {
+                    runNextLoop()
+                }
+            } else {
+                self.sendLog(message: "Kịch bản thực thi hoàn tất.")
+                self.sendDeviceStatus(status: "online")
+                FloatingWindow.shared.setStatus(online: true, running: false)
+                self.isScriptRunning = false
+            }
             return
         }
         

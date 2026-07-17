@@ -95,12 +95,12 @@ function setWsStatus(online) {
 function handleServerMessage(msg) {
     switch (msg.type) {
         case 'init':
-            // Full state on (re)connect
             connectedDevices = msg.devices || [];
-            if (msg.serverInfo) {
-                serverAddressEl.textContent = `${msg.serverInfo.ip}:${msg.serverInfo.port}`;
-            }
+            if (msg.serverInfo) serverAddressEl.textContent = `${msg.serverInfo.ip}:${msg.serverInfo.port}`;
+            if (msg.schedules) { schedules = msg.schedules; renderSchedules(); }
+            if (msg.analytics) updateAnalyticsUI(msg.analytics);
             renderDeviceList();
+            renderGrid();
             break;
 
         case 'device_connected':
@@ -848,7 +848,6 @@ $('grid-stream-all').addEventListener('click', () => {
     }
 });
 
-// Grid run-all & stop-all
 $('grid-run-all').addEventListener('click', () => {
     const content = document.getElementById('code-textarea').value.trim();
     if (!content) { logToConsole('warn', 'Editor trống'); return; }
@@ -861,9 +860,491 @@ $('grid-stop-all').addEventListener('click', () => {
     logToConsole('warn', 'Dừng tất cả thiết bị...');
 });
 
+// ══════════════════════════════════════════════════════════════
+// FEATURE 1: COORDINATE PICKER
+// ══════════════════════════════════════════════════════════════
+
+let pickerActive = false;
+let deviceResolution = { w: 390, h: 844 }; // default iPhone 13 mini
+
+// Add picker button to screen toolbar dynamically
+(function addPickerButton() {
+    const toolbar = document.querySelector('.screen-toolbar');
+    if (!toolbar) return;
+    const btn = document.createElement('button');
+    btn.className = 'btn-action picker-toggle-btn';
+    btn.id = 'btn-picker';
+    btn.title = 'Coordinate Picker — Click màn hình để lấy tọa độ';
+    btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M1 12h4M19 12h4"/></svg> 🎯 Picker`;
+    toolbar.appendChild(btn);
+    btn.addEventListener('click', togglePicker);
+})();
+
+function togglePicker() {
+    pickerActive = !pickerActive;
+    const btn = $('btn-picker');
+    if (btn) btn.classList.toggle('active', pickerActive);
+    document.querySelector('.screen-viewer')?.classList.toggle('picker-active', pickerActive);
+    if (pickerActive) logToConsole('system', '🎯 Picker ON — Click vào ảnh màn hình để lấy tọa độ');
+    else logToConsole('system', 'Picker tắt');
+}
+
+// Wire click on screen image
+screenImageEl.addEventListener('click', (e) => {
+    if (!pickerActive) return;
+    const rect = screenImageEl.getBoundingClientRect();
+    const relX = e.clientX - rect.left;
+    const relY = e.clientY - rect.top;
+    const imgW = rect.width;
+    const imgH = rect.height;
+
+    // Scale to device coordinates (server reported width/height or default)
+    const scaleX = deviceResolution.w / imgW;
+    const scaleY = deviceResolution.h / imgH;
+    const devX = Math.round(relX * scaleX);
+    const devY = Math.round(relY * scaleY);
+
+    // Insert into editor at cursor or append
+    insertAtCursor(codeTextarea, `tap(${devX}, ${devY})\n`);
+    updateLineNumbers();
+    logToConsole('success', `Đã thêm: tap(${devX}, ${devY})`);
+
+    // Visual flash
+    const parent = screenImageEl.parentElement;
+    const flash = document.createElement('div');
+    flash.className = 'coord-flash';
+    flash.style.left = `${relX}px`;
+    flash.style.top = `${relY}px`;
+
+    const tip = document.createElement('div');
+    tip.className = 'coord-tooltip';
+    tip.style.left = `${relX + 14}px`;
+    tip.style.top = `${relY - 20}px`;
+    tip.textContent = `tap(${devX}, ${devY})`;
+
+    parent.appendChild(flash);
+    parent.appendChild(tip);
+    setTimeout(() => { flash.remove(); tip.remove(); }, 700);
+});
+
+// Handle screenshot with resolution info
+function handleScreenshotReceived(msg) {
+    if (!msg.imageBase64) return;
+    if (msg.width && msg.height) deviceResolution = { w: msg.width, h: msg.height };
+    screenPlaceholderEl.style.display = 'none';
+    screenImageEl.style.display = 'block';
+    screenImageEl.src = `data:image/jpeg;base64,${msg.imageBase64}`;
+    screenshotCount++;
+    const now = Date.now();
+    if (now - screenshotLastTime >= 1000) {
+        screenFpsEl.textContent = `${screenshotCount} fps`;
+        screenshotCount = 0;
+        screenshotLastTime = now;
+    }
+}
+
+function insertAtCursor(textarea, text) {
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    textarea.value = textarea.value.substring(0, start) + text + textarea.value.substring(end);
+    textarea.selectionStart = textarea.selectionEnd = start + text.length;
+    textarea.focus();
+}
+
+// ══════════════════════════════════════════════════════════════
+// FEATURE 2: SCHEDULER
+// ══════════════════════════════════════════════════════════════
+
+let schedules = [];
+const scheduleCountEl = $('schedule-count');
+const scheduleListEl = $('schedule-list');
+
+async function loadSchedules() {
+    try {
+        const res = await fetch('/api/schedules');
+        const data = await res.json();
+        if (data.success) { schedules = data.schedules; renderSchedules(); }
+    } catch {}
+}
+
+function renderSchedules() {
+    if (scheduleCountEl) scheduleCountEl.textContent = schedules.filter(s=>s.enabled).length || '';
+    if (!scheduleListEl) return;
+    if (schedules.length === 0) {
+        scheduleListEl.innerHTML = '<div class="empty-state"><p>Chưa có lịch nào</p><small>Tạo lịch mới để tự động chạy script</small></div>';
+        return;
+    }
+    scheduleListEl.innerHTML = '';
+    const DAY_NAMES = ['CN','T2','T3','T4','T5','T6','T7'];
+    schedules.forEach(sch => {
+        const days = (sch.days || []).map(d => DAY_NAMES[d]).join(', ');
+        const card = document.createElement('div');
+        card.className = `schedule-card ${sch.enabled ? '' : 'disabled'}`;
+        card.id = `sch-card-${sch.id}`;
+        card.innerHTML = `
+            <button class="schedule-toggle ${sch.enabled ? 'on' : ''}" data-id="${sch.id}"></button>
+            <span class="schedule-time-badge">${sch.time}</span>
+            <div class="schedule-meta">
+                <div class="schedule-name">${escHtml(sch.name)}</div>
+                <div class="schedule-detail">
+                    <span>📅 ${days}</span>
+                    <span>🔁 ${sch.loopCount}x</span>
+                    <span>📄 ${escHtml(sch.scriptName || 'script')}</span>
+                    ${sch.lastFired ? `<span>⚡ ${new Date(sch.lastFired).toLocaleString('vi-VN')}</span>` : ''}
+                </div>
+            </div>
+            <button class="icon-btn schedule-del-btn" data-id="${sch.id}" title="Xóa">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>
+            </button>`;
+
+        card.querySelector('.schedule-toggle').addEventListener('click', () => toggleSchedule(sch.id));
+        card.querySelector('.schedule-del-btn').addEventListener('click', () => deleteSchedule(sch.id));
+        scheduleListEl.appendChild(card);
+    });
+}
+
+async function addSchedule() {
+    const name = $('sch-name').value.trim() || 'Lịch mới';
+    const time = $('sch-time').value;
+    const loops = parseInt($('sch-loops').value) || 1;
+    const loopDelay = parseFloat($('sch-loop-delay').value) || 0;
+    const scriptName = $('sch-script-name').value || 'scheduled.lua';
+    const scriptContent = codeTextarea.value.trim();
+    const days = [...document.querySelectorAll('.day-btn.active')].map(b => parseInt(b.dataset.day));
+
+    if (!scriptContent) { logToConsole('warn', 'Editor trống! Nhập script trước.'); return; }
+    if (!time) { logToConsole('warn', 'Chưa chọn giờ chạy.'); return; }
+
+    try {
+        const res = await fetch('/api/schedules', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, time, days, scriptName, scriptContent, loopCount: loops, loopDelay })
+        });
+        const data = await res.json();
+        if (data.success) {
+            schedules.push(data.schedule);
+            renderSchedules();
+            logToConsole('success', `Đã tạo lịch: ${name} — ${time}`);
+            activateTab('scheduler');
+        }
+    } catch (e) { logToConsole('error', 'Lỗi tạo lịch: ' + e.message); }
+}
+
+async function toggleSchedule(id) {
+    const sch = schedules.find(s => s.id === id);
+    if (!sch) return;
+    const res = await fetch(`/api/schedules/${id}`, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ enabled: !sch.enabled }) });
+    const data = await res.json();
+    if (data.success) { sch.enabled = data.schedule.enabled; renderSchedules(); }
+}
+
+async function deleteSchedule(id) {
+    if (!confirm('Xóa lịch này?')) return;
+    const res = await fetch(`/api/schedules/${id}`, { method: 'DELETE' });
+    if ((await res.json()).success) {
+        schedules = schedules.filter(s => s.id !== id);
+        renderSchedules();
+        logToConsole('system', 'Đã xóa lịch.');
+    }
+}
+
+if ($('btn-add-schedule')) $('btn-add-schedule').addEventListener('click', addSchedule);
+if ($('sch-use-current')) $('sch-use-current').addEventListener('click', () => {
+    const name = scriptNameInput.value.trim() || 'script.lua';
+    $('sch-script-name').value = name;
+    logToConsole('system', `Đã dùng script: ${name}`);
+});
+
+// Day selector toggle
+document.querySelectorAll('.day-btn').forEach(btn => {
+    btn.addEventListener('click', () => btn.classList.toggle('active'));
+});
+
+// Handle server firing a schedule
+function handleScheduleFired(msg) {
+    logToConsole('success', `⏰ Lịch kích hoạt: "${msg.name}"`);
+    const card = $(`sch-card-${msg.scheduleId}`);
+    if (card) card.classList.add('schedule-fired-flash');
+    // Update lastFired in local state
+    const sch = schedules.find(s => s.id === msg.scheduleId);
+    if (sch) { sch.lastFired = new Date().toISOString(); renderSchedules(); }
+}
+
+// ══════════════════════════════════════════════════════════════
+// FEATURE 3: LOOP CONTROL
+// ══════════════════════════════════════════════════════════════
+
+if ($('btn-run-loop')) {
+    $('btn-run-loop').addEventListener('click', () => {
+        if (!selectedDeviceUdid) { logToConsole('warn', 'Chọn thiết bị trước!'); return; }
+        const content = codeTextarea.value.trim();
+        if (!content) { logToConsole('warn', 'Editor trống'); return; }
+        const loopCount = parseInt($('loop-count').value) || 1;
+        const loopDelay = parseFloat($('loop-delay').value) || 0;
+        const device = connectedDevices.find(d => d.udid === selectedDeviceUdid);
+        sendWs({
+            action: 'run_script', targetUdid: selectedDeviceUdid,
+            script: content, scriptName: scriptNameInput.value.trim(),
+            loopCount, loopDelay
+        });
+        const loopText = loopCount === 0 ? 'vô hạn' : `${loopCount} lần`;
+        const delayText = loopDelay > 0 ? ` (delay ${loopDelay}s)` : '';
+        logToConsole('info', `Chạy lặp ${loopText}${delayText} trên: ${device?.name}`);
+        if ($('loop-status')) $('loop-status').textContent = `⟳ Đang lặp ${loopText}${delayText}...`;
+    });
+}
+
+// ══════════════════════════════════════════════════════════════
+// FEATURE 4: ANALYTICS
+// ══════════════════════════════════════════════════════════════
+
+let analyticsData = null;
+
+function updateAnalyticsUI(data) {
+    if (!data) return;
+    analyticsData = data;
+    const fmt = n => n >= 1000 ? (n/1000).toFixed(1)+'K' : String(n);
+    if ($('stat-runs')) $('stat-runs').textContent = fmt(data.totalRuns || 0);
+    if ($('stat-taps')) $('stat-taps').textContent = fmt(data.totalTaps || 0);
+    if ($('stat-swipes')) $('stat-swipes').textContent = fmt(data.totalSwipes || 0);
+    if ($('stat-time')) {
+        const secs = Math.round((data.totalRunTimeMs || 0) / 1000);
+        $('stat-time').textContent = secs >= 3600 ? `${(secs/3600).toFixed(1)}h` : secs >= 60 ? `${Math.floor(secs/60)}m${secs%60}s` : `${secs}s`;
+    }
+    drawDeviceChart(data);
+}
+
+async function loadAnalytics() {
+    try {
+        const res = await fetch('/api/analytics');
+        const data = await res.json();
+        if (data.success) updateAnalyticsUI(data.analytics);
+    } catch {}
+}
+
+function drawDeviceChart(data) {
+    const canvas = $('device-chart');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const devData = Object.values(data.devices || {});
+    if (devData.length === 0) { ctx.clearRect(0,0,canvas.width,canvas.height); return; }
+
+    canvas.width = canvas.parentElement.clientWidth - 32;
+    const W = canvas.width, H = canvas.height;
+    ctx.clearRect(0, 0, W, H);
+
+    const BAR_W = Math.min(60, (W / devData.length) - 20);
+    const maxRuns = Math.max(...devData.map(d => d.runs || 0), 1);
+    const maxTaps = Math.max(...devData.map(d => d.taps || 0), 1);
+    const CHART_H = H - 50;
+    const GAP = (W - devData.length * BAR_W * 2) / (devData.length + 1);
+
+    devData.forEach((dev, i) => {
+        const x = GAP + i * (BAR_W * 2 + GAP);
+        const name = (dev.udid || 'Device').slice(0, 8);
+
+        // Runs bar (indigo)
+        const runH = ((dev.runs || 0) / maxRuns) * CHART_H;
+        ctx.fillStyle = 'rgba(99,102,241,0.7)';
+        ctx.beginPath();
+        ctx.roundRect(x, CHART_H - runH + 10, BAR_W, runH, [4,4,0,0]);
+        ctx.fill();
+        ctx.fillStyle = '#a5b4fc';
+        ctx.font = '10px Inter, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(dev.runs || 0, x + BAR_W/2, CHART_H - runH + 6);
+
+        // Taps bar (emerald)
+        const tapH = ((dev.taps || 0) / maxTaps) * CHART_H;
+        ctx.fillStyle = 'rgba(16,185,129,0.7)';
+        ctx.beginPath();
+        ctx.roundRect(x + BAR_W + 4, CHART_H - tapH + 10, BAR_W, tapH, [4,4,0,0]);
+        ctx.fill();
+        ctx.fillStyle = '#6ee7b7';
+        ctx.fillText(dev.taps || 0, x + BAR_W*1.5 + 4, CHART_H - tapH + 6);
+
+        // Label
+        ctx.fillStyle = '#64748b';
+        ctx.font = '9px JetBrains Mono, monospace';
+        ctx.fillText(name, x + BAR_W, CHART_H + 24);
+    });
+
+    // Legend
+    ctx.fillStyle = 'rgba(99,102,241,0.7)';
+    ctx.fillRect(W - 120, H - 18, 10, 10);
+    ctx.fillStyle = '#8b92a8'; ctx.font = '10px Inter'; ctx.textAlign = 'left';
+    ctx.fillText('Lần chạy', W - 108, H - 9);
+    ctx.fillStyle = 'rgba(16,185,129,0.7)';
+    ctx.fillRect(W - 60, H - 18, 10, 10);
+    ctx.fillText('Clicks', W - 48, H - 9);
+}
+
+if ($('btn-reset-analytics')) {
+    $('btn-reset-analytics').addEventListener('click', async () => {
+        if (!confirm('Xóa tất cả dữ liệu thống kê?')) return;
+        const res = await fetch('/api/analytics', { method: 'DELETE' });
+        if ((await res.json()).success) { logToConsole('system', 'Đã xóa analytics.'); }
+    });
+}
+
+// ══════════════════════════════════════════════════════════════
+// FEATURE 5: SCRIPT FOLDERS
+// ══════════════════════════════════════════════════════════════
+
+let currentFolder = '';
+
+async function loadScripts(folder) {
+    currentFolder = folder !== undefined ? folder : currentFolder;
+    try {
+        const url = `/api/scripts${currentFolder ? '?folder=' + encodeURIComponent(currentFolder) : ''}`;
+        const res = await fetch(url);
+        const data = await res.json();
+        if (data.success) {
+            savedScripts = data.scripts;
+            renderScriptList(data.folders || []);
+            updateBreadcrumb();
+        }
+    } catch (e) { console.error('Load scripts error:', e); }
+}
+
+function updateBreadcrumb() {
+    const bc = $('folder-breadcrumb');
+    if (!bc) return;
+    const parts = currentFolder ? currentFolder.split('/') : [];
+    bc.innerHTML = `<button class="breadcrumb-item ${!currentFolder ? 'active' : ''}" data-path="">📁 Scripts</button>`;
+    let built = '';
+    parts.forEach((part, i) => {
+        built = built ? `${built}/${part}` : part;
+        const path = built;
+        bc.innerHTML += `<span class="breadcrumb-sep">›</span><button class="breadcrumb-item ${i === parts.length-1 ? 'active' : ''}" data-path="${escHtml(path)}">${escHtml(part)}</button>`;
+    });
+    bc.querySelectorAll('.breadcrumb-item').forEach(btn => {
+        btn.addEventListener('click', () => loadScripts(btn.dataset.path));
+    });
+}
+
+function renderScriptList(folders = []) {
+    if (savedScripts.length === 0 && folders.length === 0) {
+        scriptListEl.innerHTML = '<div class="empty-state"><small>Chưa có script hay thư mục</small></div>';
+        return;
+    }
+    scriptListEl.innerHTML = '';
+
+    // Render folders first
+    folders.forEach(folder => {
+        const item = document.createElement('div');
+        item.className = 'folder-item';
+        item.innerHTML = `
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+            <span class="folder-item-name">${escHtml(folder.name)}</span>
+            <button class="icon-btn folder-item-del" title="Xóa thư mục" data-folder-name="${escHtml(folder.name)}">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>
+            </button>`;
+        item.querySelector('.folder-item-name').addEventListener('click', () => loadScripts(folder.path));
+        item.querySelector('.folder-item-del').addEventListener('click', async (e) => {
+            e.stopPropagation();
+            if (!confirm(`Xóa thư mục "${folder.name}"?`)) return;
+            const res = await fetch(`/api/folders/${encodeURIComponent(folder.name)}?parent=${encodeURIComponent(currentFolder)}`, { method: 'DELETE' });
+            if ((await res.json()).success) { logToConsole('system', `Đã xóa thư mục: ${folder.name}`); loadScripts(); }
+        });
+        scriptListEl.appendChild(item);
+    });
+
+    // Render script files
+    savedScripts.forEach(script => {
+        const item = document.createElement('div');
+        item.className = `script-item ${currentScriptName === script.name && currentFolder === script.folder ? 'active' : ''}`;
+        item.innerHTML = `
+            <span class="script-title">${escHtml(script.name)}</span>
+            <button class="script-del-btn" title="Xóa">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>
+            </button>`;
+        item.addEventListener('click', e => { if (!e.target.closest('.script-del-btn')) openScript(script.name, script.folder); });
+        item.querySelector('.script-del-btn').addEventListener('click', e => { e.stopPropagation(); deleteScript(script.name, script.folder); });
+        scriptListEl.appendChild(item);
+    });
+}
+
+function openScript(name, folder) {
+    const s = savedScripts.find(x => x.name === name && x.folder === folder);
+    if (!s) return;
+    currentScriptName = s.name;
+    scriptNameInput.value = s.name;
+    codeTextarea.value = s.content;
+    updateLineNumbers();
+    renderScriptList();
+    logToConsole('system', `Mở: ${folder ? folder + '/' : ''}${name}`);
+    activateTab('editor');
+}
+
+async function saveScript() {
+    const name = scriptNameInput.value.trim();
+    const content = codeTextarea.value;
+    if (!name) { logToConsole('error', 'Vui lòng nhập tên Script'); return; }
+    try {
+        const res = await fetch('/api/scripts/save', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, content, folder: currentFolder })
+        });
+        const data = await res.json();
+        if (data.success) {
+            currentScriptName = data.name;
+            scriptNameInput.value = data.name;
+            logToConsole('success', `Đã lưu: ${data.folder ? data.folder + '/' : ''}${data.name}`);
+            await loadScripts();
+        } else logToConsole('error', 'Lỗi: ' + data.error);
+    } catch (e) { logToConsole('error', 'Lỗi kết nối'); }
+}
+
+async function deleteScript(name, folder) {
+    if (!confirm(`Xóa script "${name}"?`)) return;
+    const folderQ = folder ? `?folder=${encodeURIComponent(folder)}` : '';
+    try {
+        const res = await fetch(`/api/scripts/${encodeURIComponent(name)}${folderQ}`, { method: 'DELETE' });
+        const data = await res.json();
+        if (data.success) {
+            logToConsole('system', `Đã xóa: ${name}`);
+            if (currentScriptName === name) { currentScriptName = ''; scriptNameInput.value = ''; codeTextarea.value = ''; updateLineNumbers(); }
+            await loadScripts();
+        }
+    } catch {}
+}
+
+// New folder button
+if ($('btn-new-folder')) {
+    $('btn-new-folder').addEventListener('click', async () => {
+        const name = prompt('Tên thư mục mới:');
+        if (!name || !name.trim()) return;
+        const res = await fetch('/api/folders/create', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: name.trim(), parent: currentFolder })
+        });
+        const data = await res.json();
+        if (data.success) { logToConsole('success', `Tạo thư mục: ${name}`); loadScripts(); }
+    });
+}
+
+// ══════════════════════════════════════════════════════════════
+// WebSocket Analytics/Schedule Message Routing
+// ══════════════════════════════════════════════════════════════
+
+// Extend existing handleServerMessage
+const _origHandleMsg = handleServerMessage;
+function handleServerMessage(msg) {
+    if (msg.type === 'analytics_update') { updateAnalyticsUI(msg.analytics); return; }
+    if (msg.type === 'schedule_fired') { handleScheduleFired(msg); return; }
+    if (msg.type === 'schedules_updated') { schedules = msg.schedules; renderSchedules(); return; }
+    _origHandleMsg(msg);
+}
+
 // ── Bootstrap ──────────────────────────────────────────
 setGridCols(2);
 connectWebSocket();
 loadScripts();
+loadSchedules();
+loadAnalytics();
 loadServerInfo();
 updateLineNumbers();
+
+// First tab active = editor
+activateTab('editor');

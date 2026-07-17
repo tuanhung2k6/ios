@@ -73,10 +73,13 @@
                     </div>
                 </div>
 
-                <!-- Scripts Panel -->
+                <!-- Scripts Panel with Folder Support -->
                 <div class="panel" id="scripts-panel">
                     <div class="panel-header">
                         <h2>Scripts</h2>
+                        <button class="icon-btn" id="btn-new-folder" title="Tạo Thư mục">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                        </button>
                         <button class="icon-btn success" id="btn-new-script" title="Tạo Script mới">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
                         </button>
@@ -242,8 +245,133 @@
                 <div class="tab-panel" id="tab-info">
                     <div class="device-info-panel" id="device-info-panel">
                         <div class="no-device-selected">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="48" height="48" opacity="0.3"><rect x="5" y="2" width="14" height="20" rx="3"/></svg>
-                            <p>Chọn một thiết bị từ sidebar để xem thông tin</p>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="48" height="48" style="opacity:0.3"><rect x="5" y="2" width="14" height="20" rx="3"/></svg>
+                            <p>Chọn một thiết bị để xem thông tin</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ── TAB: SCHEDULER ── -->
+                <div class="tab-panel" id="tab-scheduler">
+                    <div class="scheduler-container">
+                        <!-- Create Schedule Form -->
+                        <div class="scheduler-form-panel">
+                            <h3 class="panel-section-title">⏰ Tạo Lịch Mới</h3>
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label>Tên lịch</label>
+                                    <input type="text" id="sch-name" placeholder="VD: Farm sáng hàng ngày" class="form-input">
+                                </div>
+                                <div class="form-group">
+                                    <label>Giờ chạy</label>
+                                    <input type="time" id="sch-time" class="form-input" value="08:00">
+                                </div>
+                                <div class="form-group full-width">
+                                    <label>Ngày trong tuần</label>
+                                    <div class="day-selector">
+                                        <button class="day-btn active" data-day="1">T2</button>
+                                        <button class="day-btn active" data-day="2">T3</button>
+                                        <button class="day-btn active" data-day="3">T4</button>
+                                        <button class="day-btn active" data-day="4">T5</button>
+                                        <button class="day-btn active" data-day="5">T6</button>
+                                        <button class="day-btn" data-day="6">T7</button>
+                                        <button class="day-btn" data-day="0">CN</button>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label>Số lần lặp</label>
+                                    <input type="number" id="sch-loops" class="form-input" value="1" min="1" max="999">
+                                </div>
+                                <div class="form-group">
+                                    <label>Delay giữa vòng (giây)</label>
+                                    <input type="number" id="sch-loop-delay" class="form-input" value="0" min="0">
+                                </div>
+                                <div class="form-group full-width">
+                                    <label>Script (dùng script đang mở trong Editor)</label>
+                                    <div class="form-row">
+                                        <input type="text" id="sch-script-name" class="form-input" placeholder="main.lua" readonly>
+                                        <button class="btn-action" id="sch-use-current">Dùng script hiện tại</button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div style="display:flex;gap:8px;margin-top:12px">
+                                <button class="btn-action success" id="btn-add-schedule">+ Thêm Lịch</button>
+                            </div>
+                        </div>
+
+                        <!-- Schedule List -->
+                        <div class="scheduler-list-panel">
+                            <h3 class="panel-section-title">📋 Danh Sách Lịch</h3>
+                            <div id="schedule-list" class="schedule-list">
+                                <div class="empty-state"><p>Chưa có lịch nào</p></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ── TAB: ANALYTICS ── -->
+                <div class="tab-panel" id="tab-analytics">
+                    <div class="analytics-container">
+                        <div class="analytics-header">
+                            <h3>📊 Thống Kê Thực Thi</h3>
+                            <button class="btn-action" id="btn-reset-analytics">Xóa Dữ Liệu</button>
+                        </div>
+                        <!-- Summary Cards -->
+                        <div class="stats-cards" id="stats-cards">
+                            <div class="stat-card">
+                                <div class="stat-icon" style="background:rgba(99,102,241,0.15);color:#6366f1">▶</div>
+                                <div class="stat-body">
+                                    <div class="stat-value" id="stat-runs">0</div>
+                                    <div class="stat-label">Tổng lần chạy</div>
+                                </div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-icon" style="background:rgba(16,185,129,0.15);color:#10b981">👆</div>
+                                <div class="stat-body">
+                                    <div class="stat-value" id="stat-taps">0</div>
+                                    <div class="stat-label">Tổng lần click</div>
+                                </div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-icon" style="background:rgba(245,158,11,0.15);color:#f59e0b">↕</div>
+                                <div class="stat-body">
+                                    <div class="stat-value" id="stat-swipes">0</div>
+                                    <div class="stat-label">Tổng lần vuốt</div>
+                                </div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-icon" style="background:rgba(6,182,212,0.15);color:#06b6d4">⏱</div>
+                                <div class="stat-body">
+                                    <div class="stat-value" id="stat-time">0s</div>
+                                    <div class="stat-label">Tổng thời gian</div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Per-Device Chart -->
+                        <div class="chart-section">
+                            <h4 class="chart-title">Thống Kê Theo Thiết Bị</h4>
+                            <canvas id="device-chart" height="220"></canvas>
+                        </div>
+                        <!-- Loop Control Panel -->
+                        <div class="loop-control-section">
+                            <h4 class="chart-title">🔁 Cài Đặt Lặp Script</h4>
+                            <div class="loop-controls">
+                                <div class="form-group">
+                                    <label>Số lần lặp (0 = vô hạn)</label>
+                                    <input type="number" id="loop-count" class="form-input" value="1" min="0" max="9999">
+                                </div>
+                                <div class="form-group">
+                                    <label>Delay giữa vòng (giây)</label>
+                                    <input type="number" id="loop-delay" class="form-input" value="0" min="0" step="0.5">
+                                </div>
+                                <div style="display:flex;align-items:flex-end;padding-bottom:2px">
+                                    <button class="btn-action success" id="btn-run-loop">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+                                        Chạy Lặp
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="loop-status" id="loop-status"></div>
                         </div>
                     </div>
                 </div>
