@@ -7,11 +7,13 @@ class WebSocketClient: NSObject {
     
     private var webSocket: URLSessionWebSocketTask?
     private var serverIP: String = "localhost"
-    private var serverPort: String = "3000"
+    private var serverPort: String = "9898"
     private var isConnected = false
     private var mockUdid = ""
     
     private var scriptRunnerTimer: Timer?
+    private var scriptLines: [String] = []
+    private var isScriptRunning = false
     
     private override init() {
         super.init()
@@ -177,53 +179,46 @@ class WebSocketClient: NSObject {
         // Let's parser lines looking for basic commands (tap, swipe, sleep, appRun, log)
         // to execute them dynamically for demonstration and verification.
         
-        let lines = content.components(separatedBy: .newlines)
-        var lineIndex = 0
+        self.scriptLines = content.components(separatedBy: .newlines)
+        self.isScriptRunning = true
         
-        // Mock execution step-by-step using a timer
-        scriptRunnerTimer = Timer.scheduledTimer(withTimeInterval: 0.8, repeats: true) { [weak self] timer in
-            guard let self = self else {
-                timer.invalidate()
-                return
-            }
-            
-            if lineIndex >= lines.count {
-                self.sendLog(message: "Kịch bản thực thi hoàn tất.")
-                self.sendDeviceStatus(status: "online")
-                FloatingWindow.shared.setStatus(online: true, running: false)
-                timer.invalidate()
-                return
-            }
-            
-            let line = lines[lineIndex].trimmingCharacters(in: .whitespacesAndNewlines)
-            lineIndex += 1
-            
-            // Skip empty lines and comments
-            if line.isEmpty || line.hasPrefix("--") {
-                return
-            }
-            
-            self.executeLuaLine(line)
-        }
+        executeLine(at: 0)
     }
     
-    @objc private func stopCurrentScript() {
-        if scriptRunnerTimer != nil {
-            scriptRunnerTimer?.invalidate()
-            scriptRunnerTimer = nil
-            self.sendLog(message: "Kịch bản đã bị dừng lại.")
+    private func executeLine(at index: Int) {
+        guard isScriptRunning else { return }
+        
+        if index >= scriptLines.count {
+            self.sendLog(message: "Kịch bản thực thi hoàn tất.")
             self.sendDeviceStatus(status: "online")
             FloatingWindow.shared.setStatus(online: true, running: false)
+            self.isScriptRunning = false
+            return
         }
-    }
-    
-    private func executeLuaLine(_ line: String) {
-        // Simple regex-based execution for basic Lua commands
-        if line.contains("tap(") {
+        
+        let line = scriptLines[index].trimmingCharacters(in: .whitespacesAndNewlines)
+        
+        // Skip comments and empty lines
+        if line.isEmpty || line.hasPrefix("--") || line.hasPrefix("local ") && !line.contains("require") {
+            // Immediately execute next line
+            self.executeLine(at: index + 1)
+            return
+        }
+        
+        var delay: Double = 0.1 // Default delay between lines
+        
+        if line.contains("sleep(") {
+            let params = parseParameters(line, prefix: "sleep(")
+            if let val = params.first, let sleepTime = Double(val) {
+                delay = sleepTime
+                self.sendLog(message: "Chờ \(sleepTime) giây")
+            }
+        } else if line.contains("tap(") {
             let coords = parseParameters(line, prefix: "tap(")
             if coords.count >= 2, let x = Double(coords[0]), let y = Double(coords[1]) {
                 self.sendLog(message: "Click: \(x), \(y)")
                 TouchSimulator.shared.tap(x: CGFloat(x), y: CGFloat(y))
+                delay = 0.3
             }
         } else if line.contains("swipe(") {
             let params = parseParameters(line, prefix: "swipe(")
@@ -233,6 +228,18 @@ class WebSocketClient: NSObject {
                 let duration = params.count >= 5 ? (Double(params[4]) ?? 0.3) : 0.3
                 self.sendLog(message: "Vuốt từ (\(x1), \(y1)) tới (\(x2), \(y2))")
                 TouchSimulator.shared.swipe(fromX: CGFloat(x1), fromY: CGFloat(y1), toX: CGFloat(x2), toY: CGFloat(y2), duration: duration)
+                delay = duration + 0.3
+            }
+        } else if line.contains("longPress(") {
+            let params = parseParameters(line, prefix: "longPress(")
+            if params.count >= 2, let x = Double(params[0]), let y = Double(params[1]) {
+                let duration = params.count >= 3 ? (Double(params[2]) ?? 1.0) : 1.0
+                self.sendLog(message: "Nhấn giữ tại (\(x), \(y)) trong \(duration)s")
+                TouchSimulator.shared.touchDown(x: CGFloat(x), y: CGFloat(y))
+                DispatchQueue.main.asyncAfter(deadline: .now() + duration) {
+                    TouchSimulator.shared.touchUp(x: CGFloat(x), y: CGFloat(y))
+                }
+                delay = duration + 0.3
             }
         } else if line.contains("log(") || line.contains("print(") {
             let prefix = line.contains("log(") ? "log(" : "print("
@@ -246,14 +253,27 @@ class WebSocketClient: NSObject {
             if let bundleId = params.first {
                 let cleanId = bundleId.replacingOccurrences(of: "\"", with: "").replacingOccurrences(of: "'", with: "")
                 self.sendLog(message: "Mở ứng dụng: \(cleanId)")
-                // Sideloaded app cannot run arbitrary apps without jailbreak API,
-                // but we simulate opening Safari or URL
                 if cleanId == "com.apple.mobilesafari" {
                     DispatchQueue.main.async {
                         UIApplication.shared.open(URL(string: "https://www.apple.com")!, options: [:], completionHandler: nil)
                     }
                 }
+                delay = 1.8
             }
+        }
+        
+        // Execute next line after the calculated delay
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+            self.executeLine(at: index + 1)
+        }
+    }
+    
+    @objc private func stopCurrentScript() {
+        if isScriptRunning {
+            isScriptRunning = false
+            self.sendLog(message: "Kịch bản đã bị dừng lại.")
+            self.sendDeviceStatus(status: "online")
+            FloatingWindow.shared.setStatus(online: true, running: false)
         }
     }
     
