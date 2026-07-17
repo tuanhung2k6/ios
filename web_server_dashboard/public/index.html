@@ -92,9 +92,13 @@
 
                 <!-- Tab Navigation -->
                 <div class="tabs-nav">
-                    <button class="tab-btn active" data-tab="editor">
+                    <button class="tab-btn" data-tab="editor">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
                         Script Editor
+                    </button>
+                    <button class="tab-btn" data-tab="grid">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+                        Grid View <span class="tab-badge" id="grid-device-count">0</span>
                     </button>
                     <button class="tab-btn" data-tab="screen">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
@@ -168,6 +172,43 @@
                                 <span class="log-badge system">SYS</span>
                                 Sẵn sàng kết nối. Mở app iControl trên iPhone.
                             </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ── TAB: GRID VIEW ── -->
+                <div class="tab-panel" id="tab-grid">
+                    <div class="grid-toolbar">
+                        <div class="grid-controls">
+                            <span class="grid-label">Cỡ lưới:</span>
+                            <button class="grid-size-btn active" data-cols="2">2×</button>
+                            <button class="grid-size-btn" data-cols="3">3×</button>
+                            <button class="grid-size-btn" data-cols="4">4×</button>
+                        </div>
+                        <div class="grid-batch-actions">
+                            <button class="btn-action" id="grid-screenshot-all">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                                Chụp Tất Cả
+                            </button>
+                            <button class="btn-action" id="grid-stream-all">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+                                <span id="grid-stream-label">Bật Stream Tất Cả</span>
+                            </button>
+                            <button class="btn-action success" id="grid-run-all">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                                Chạy Tất Cả
+                            </button>
+                            <button class="btn-action danger" id="grid-stop-all">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>
+                                Dừng Tất Cả
+                            </button>
+                        </div>
+                    </div>
+                    <div class="grid-container" id="grid-container">
+                        <div class="grid-empty-state" id="grid-empty">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" width="56" height="56" opacity="0.2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+                            <p>Chưa có thiết bị nào kết nối</p>
+                            <small>Mở app iControl trên các iPhone để xem Grid View</small>
                         </div>
                     </div>
                 </div>

@@ -18,6 +18,12 @@ let streamTimer = null;
 let screenshotCount = 0;
 let screenshotLastTime = Date.now();
 
+// ── Grid View State ────────────────────────────────────
+let gridCols = 2;
+let gridStreamActive = false;
+let gridStreamTimer = null;
+let deviceScreenshots = {}; // udid → latest base64
+
 // ── DOM Refs ───────────────────────────────────────────
 const $ = id => document.getElementById(id);
 const deviceListEl       = $('device-list');
@@ -103,6 +109,7 @@ function handleServerMessage(msg) {
             }
             logToConsole('success', `Thiết bị kết nối: ${msg.device.name} (${msg.device.ip})`);
             renderDeviceList();
+            renderGrid();
             break;
 
         case 'device_disconnected':
@@ -112,10 +119,12 @@ function handleServerMessage(msg) {
                 selectedDeviceUdid = null;
             }
             renderDeviceList();
+            renderGrid();
             break;
 
         case 'device_status_change':
             updateDeviceInList(msg.device);
+            updateGridTile(msg.device);
             break;
 
         case 'device_log':
@@ -129,7 +138,14 @@ function handleServerMessage(msg) {
             break;
 
         case 'device_screenshot':
-            handleScreenshotReceived(msg);
+            if (!msg.imageBase64) return;
+            // Update the single-device screen tab
+            deviceScreenshots[msg.udid] = msg.imageBase64;
+            if (!selectedDeviceUdid || selectedDeviceUdid === msg.udid) {
+                handleScreenshotReceived(msg);
+            }
+            // Also update the grid tile for this device
+            updateGridTileScreen(msg.udid, msg.imageBase64);
             break;
 
         case 'error':
@@ -609,7 +625,244 @@ async function loadServerInfo() {
     } catch {}
 }
 
+// ══════════════════════════════════════════════════════
+// GRID VIEW — Multi Device Management
+// ══════════════════════════════════════════════════════
+
+const gridContainerEl = $('grid-container');
+const gridDeviceCountEl = $('grid-device-count');
+const gridStreamLabelEl = $('grid-stream-label');
+
+// Set CSS variable for grid column count
+function setGridCols(cols) {
+    gridCols = cols;
+    gridContainerEl.style.setProperty('--grid-cols', cols);
+    document.querySelectorAll('.grid-size-btn').forEach(btn => {
+        btn.classList.toggle('active', parseInt(btn.dataset.cols) === cols);
+    });
+    renderGrid();
+}
+
+// Wire up size buttons
+document.querySelectorAll('.grid-size-btn').forEach(btn => {
+    btn.addEventListener('click', () => setGridCols(parseInt(btn.dataset.cols)));
+});
+
+// Render the entire grid from current device list
+function renderGrid() {
+    // Update badge count
+    const online = connectedDevices.filter(d => d.status !== 'offline');
+    gridDeviceCountEl.textContent = online.length || '';
+    gridDeviceCountEl.dataset.zero = online.length === 0 ? 'true' : 'false';
+
+    if (connectedDevices.length === 0) {
+        gridContainerEl.innerHTML = `
+            <div class="grid-empty-state" id="grid-empty">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" width="56" height="56" style="opacity:0.2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+                <p>Chưa có thiết bị nào kết nối</p>
+                <small>Mở app iControl trên các iPhone để xem Grid View</small>
+            </div>`;
+        return;
+    }
+
+    // Remove empty state, then rebuild tiles for each device
+    gridContainerEl.style.setProperty('--grid-cols', gridCols);
+
+    // Remove stale tiles
+    const existingUdids = new Set([...gridContainerEl.querySelectorAll('.device-tile')].map(el => el.dataset.udid));
+    const currentUdids = new Set(connectedDevices.map(d => d.udid));
+
+    existingUdids.forEach(udid => {
+        if (!currentUdids.has(udid)) {
+            const el = gridContainerEl.querySelector(`[data-udid="${udid}"]`);
+            if (el) el.remove();
+        }
+    });
+
+    // Remove empty state if present
+    const emptyState = gridContainerEl.querySelector('.grid-empty-state');
+    if (emptyState) emptyState.remove();
+
+    connectedDevices.forEach(device => {
+        const existing = gridContainerEl.querySelector(`.device-tile[data-udid="${device.udid}"]`);
+        if (existing) {
+            // Just update status badge and footer
+            updateGridTile(device);
+        } else {
+            const tile = createGridTile(device);
+            gridContainerEl.appendChild(tile);
+        }
+    });
+}
+
+// Create a new device tile element
+function createGridTile(device) {
+    const battery = device.battery ?? null;
+    const battClass = battery !== null ? (battery < 20 ? 'low' : battery < 50 ? 'mid' : '') : '';
+    const battPct = battery !== null ? battery : '—';
+    const hasScreen = !!deviceScreenshots[device.udid];
+
+    const tile = document.createElement('div');
+    tile.className = `device-tile ${device.status}`;
+    tile.dataset.udid = device.udid;
+    tile.innerHTML = `
+        <div class="tile-header">
+            <span class="tile-name">${escHtml(device.name)}</span>
+            <span class="tile-status ${device.status}">
+                <span class="tile-status-dot"></span>
+                ${device.status === 'running' ? '⚡ Running' : device.status === 'online' ? 'Online' : 'Offline'}
+            </span>
+        </div>
+        <div class="tile-screen">
+            <span class="tile-live-badge" id="live-${device.udid}">● LIVE</span>
+            ${hasScreen
+                ? `<img class="tile-screen-img loaded" src="data:image/jpeg;base64,${deviceScreenshots[device.udid]}" alt="Screen">`
+                : `<div class="tile-screen-placeholder">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" width="28" height="28"><rect x="5" y="2" width="14" height="20" rx="3"/></svg>
+                    <span>Tap 📸 để chụp màn hình</span>
+                </div>`
+            }
+            <div class="tile-screen-overlay">
+                <button class="tile-overlay-btn run-btn" data-action="run" data-udid="${device.udid}" title="Chạy Script">▶</button>
+                <button class="tile-overlay-btn screen-btn" data-action="screenshot" data-udid="${device.udid}" title="Chụp màn hình">📸</button>
+                <button class="tile-overlay-btn stop-btn" data-action="stop" data-udid="${device.udid}" title="Dừng">■</button>
+            </div>
+        </div>
+        <div class="tile-footer">
+            <span class="tile-ip">${escHtml(device.ip)}</span>
+            ${battery !== null ? `
+            <div class="tile-battery">
+                <div class="tile-battery-bar">
+                    <div class="tile-battery-fill ${battClass}" style="width:${battery}%"></div>
+                </div>
+                <span class="tile-battery-pct">${battPct}%</span>
+            </div>` : ''}
+        </div>`;
+
+    // Wire overlay button events
+    tile.querySelectorAll('.tile-overlay-btn').forEach(btn => {
+        btn.addEventListener('click', e => {
+            e.stopPropagation();
+            const { action, udid } = btn.dataset;
+            if (action === 'run') {
+                const content = document.getElementById('code-textarea').value.trim();
+                if (!content) { logToConsole('warn', 'Editor trống, không có gì để chạy'); return; }
+                sendWs({ action: 'run_script', targetUdid: udid, script: content, scriptName: document.getElementById('script-name').value.trim() });
+                logToConsole('info', `Chạy script trên: ${device.name}`);
+            } else if (action === 'stop') {
+                sendWs({ action: 'stop_script', targetUdid: udid });
+                logToConsole('warn', `Dừng script trên: ${device.name}`);
+            } else if (action === 'screenshot') {
+                sendWs({ action: 'request_screenshot', targetUdid: udid });
+                logToConsole('system', `Chụp màn hình: ${device.name}`);
+            }
+        });
+    });
+
+    // Click tile header to select device + open screen tab
+    tile.addEventListener('click', e => {
+        if (e.target.closest('.tile-overlay-btn')) return;
+        selectDevice(device.udid);
+        activateTab('screen');
+        if (deviceScreenshots[device.udid]) {
+            handleScreenshotReceived({ imageBase64: deviceScreenshots[device.udid] });
+        }
+    });
+
+    return tile;
+}
+
+// Live update a tile's status without full re-render
+function updateGridTile(device) {
+    const tile = gridContainerEl.querySelector(`.device-tile[data-udid="${device.udid}"]`);
+    if (!tile) { renderGrid(); return; }
+
+    tile.className = `device-tile ${device.status}`;
+    const statusEl = tile.querySelector('.tile-status');
+    if (statusEl) {
+        statusEl.className = `tile-status ${device.status}`;
+        statusEl.innerHTML = `<span class="tile-status-dot"></span>${device.status === 'running' ? '⚡ Running' : device.status === 'online' ? 'Online' : 'Offline'}`;
+    }
+
+    // Update battery if present
+    if (device.battery !== undefined) {
+        const fill = tile.querySelector('.tile-battery-fill');
+        const pct = tile.querySelector('.tile-battery-pct');
+        if (fill) {
+            fill.style.width = `${device.battery}%`;
+            fill.className = `tile-battery-fill ${device.battery < 20 ? 'low' : device.battery < 50 ? 'mid' : ''}`;
+        }
+        if (pct) pct.textContent = `${device.battery}%`;
+    }
+
+    // Update badge
+    const online = connectedDevices.filter(d => d.status !== 'offline').length;
+    gridDeviceCountEl.textContent = online || '';
+}
+
+// Update screen image in a specific tile
+function updateGridTileScreen(udid, imageBase64) {
+    const tile = gridContainerEl.querySelector(`.device-tile[data-udid="${udid}"]`);
+    if (!tile) return;
+
+    let img = tile.querySelector('.tile-screen-img');
+    const placeholder = tile.querySelector('.tile-screen-placeholder');
+
+    if (!img) {
+        img = document.createElement('img');
+        img.className = 'tile-screen-img';
+        img.alt = 'Screen';
+        tile.querySelector('.tile-screen').insertBefore(img, tile.querySelector('.tile-screen-overlay'));
+    }
+
+    img.src = `data:image/jpeg;base64,${imageBase64}`;
+    img.classList.add('loaded');
+    if (placeholder) placeholder.style.display = 'none';
+}
+
+// Grid screenshot-all button
+$('grid-screenshot-all').addEventListener('click', () => {
+    if (connectedDevices.length === 0) return;
+    connectedDevices.forEach(d => sendWs({ action: 'request_screenshot', targetUdid: d.udid }));
+    logToConsole('system', `Chụp màn hình ${connectedDevices.length} thiết bị...`);
+});
+
+// Grid stream toggle
+$('grid-stream-all').addEventListener('click', () => {
+    gridStreamActive = !gridStreamActive;
+    gridStreamLabelEl.textContent = gridStreamActive ? 'Tắt Stream Tất Cả' : 'Bật Stream Tất Cả';
+
+    // Toggle LIVE badges
+    document.querySelectorAll('.tile-live-badge').forEach(b => b.classList.toggle('active', gridStreamActive));
+
+    if (gridStreamActive) {
+        logToConsole('success', 'Bắt đầu stream tất cả thiết bị (0.5s/frame)...');
+        gridStreamTimer = setInterval(() => {
+            connectedDevices.forEach(d => {
+                if (d.status !== 'offline') sendWs({ action: 'request_screenshot', targetUdid: d.udid });
+            });
+        }, 500);
+    } else {
+        clearInterval(gridStreamTimer);
+        logToConsole('system', 'Đã tắt stream.');
+    }
+});
+
+// Grid run-all & stop-all
+$('grid-run-all').addEventListener('click', () => {
+    const content = document.getElementById('code-textarea').value.trim();
+    if (!content) { logToConsole('warn', 'Editor trống'); return; }
+    sendWs({ action: 'run_all', script: content, scriptName: document.getElementById('script-name').value.trim() });
+    logToConsole('info', `Chạy script trên ${connectedDevices.length} thiết bị...`);
+});
+
+$('grid-stop-all').addEventListener('click', () => {
+    sendWs({ action: 'stop_all' });
+    logToConsole('warn', 'Dừng tất cả thiết bị...');
+});
+
 // ── Bootstrap ──────────────────────────────────────────
+setGridCols(2);
 connectWebSocket();
 loadScripts();
 loadServerInfo();
