@@ -1,0 +1,9 @@
+node_modules/
+build_output/
+*.ipa
+.DS_Store
+.vscode/
+*.sqlite
+*.db
+.env
+.env.local

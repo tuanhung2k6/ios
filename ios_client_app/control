@@ -1,0 +1,9 @@
+Package: com.personal.icontrolapp
+Name: iControlApp
+Depends: mobilesubstrate
+Version: 1.0.0
+Architecture: iphoneos-arm64
+Description: Clean iOS Remote Control Client with HUD overlay and no premium limits.
+Maintainer: Personal
+Author: Personal
+Section: Applications

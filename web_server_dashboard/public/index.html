@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>iOSControl - Central Command Center</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Top Navigation -->
+        <header class="main-header">
+            <div class="logo">
+                <svg class="logo-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="5" y="2" width="14" height="20" rx="3" stroke="currentColor" stroke-width="2"/>
+                    <path d="M12 18H12.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    <path d="M9 5H15" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                </svg>
+                <h1>iOSControl <span>Dashboard</span></h1>
+            </div>
+            <div class="server-status">
+                <span class="status-indicator online"></span>
+                <span>Server Running</span>
+            </div>
+        </header>
+
+        <div class="workspace">
+            <!-- Sidebar: Devices & Script Files -->
+            <aside class="sidebar">
+                <!-- Connected Devices Panel -->
+                <div class="panel devices-panel">
+                    <div class="panel-header">
+                        <h2>Thiết Bị Đang Kết Nối</h2>
+                        <span class="badge" id="device-count">0</span>
+                    </div>
+                    <div class="device-list" id="device-list">
+                        <div class="empty-state">Không có thiết bị kết nối.</div>
+                    </div>
+                </div>
+
+                <!-- Scripts List Panel -->
+                <div class="panel scripts-panel">
+                    <div class="panel-header">
+                        <h2>Danh Sách Script</h2>
+                        <button class="btn btn-icon" id="btn-new-script" title="Tạo Script mới">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+                        </button>
+                    </div>
+                    <div class="script-list" id="script-list">
+                        <div class="empty-state">Chưa có script lưu trữ.</div>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Main Work Area: Code Editor & Live Logs -->
+            <main class="editor-container">
+                <!-- Editor Toolbar -->
+                <div class="editor-toolbar">
+                    <div class="script-meta">
+                        <svg class="file-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                            <polyline points="14 2 14 8 20 8"/>
+                        </svg>
+                        <input type="text" id="script-name" value="main.lua" placeholder="Tên script...">
+                    </div>
+                    <div class="actions">
+                        <div class="device-target">
+                            <label for="select-target-device">Thiết bị chạy:</label>
+                            <select id="select-target-device">
+                                <option value="">-- Chọn thiết bị --</option>
+                            </select>
+                        </div>
+                        <button class="btn btn-success" id="btn-run" disabled>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                            Chạy Script
+                        </button>
+                        <button class="btn btn-danger" id="btn-stop" disabled>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>
+                            Dừng
+                        </button>
+                        <button class="btn btn-primary" id="btn-save">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                            Lưu Script
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Code Editor -->
+                <div class="code-editor-wrapper">
+                    <div class="line-numbers" id="line-numbers">
+                        <span>1</span>
+                    </div>
+                    <textarea id="code-textarea" spellcheck="false" autocomplete="off" placeholder="-- Nhập mã Lua Script ở đây để điều khiển iOS..."></textarea>
+                </div>
+
+                <!-- Console Console Logs -->
+                <div class="console-panel">
+                    <div class="console-header">
+                        <h3>Nhật Ký Thực Thi (Live Logs)</h3>
+                        <div class="console-actions">
+                            <button class="btn btn-small" id="btn-clear-console">Xóa Console</button>
+                        </div>
+                    </div>
+                    <div class="console-body" id="console-logs">
+                        <div class="console-line system">[System] Sẵn sàng kết nối thiết bị. Hãy mở app iControl trên iPhone của bạn.</div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+    <script src="app.js"></script>
+</body>
+</html>

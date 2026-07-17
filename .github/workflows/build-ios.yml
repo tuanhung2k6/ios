@@ -1,0 +1,34 @@
+name: Build iOS IPA Package
+
+on:
+  workflow_dispatch: # Allows manual trigger on GitHub web UI
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    name: Compile iOS App
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Xcode
+        run: sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+
+      - name: Make Script Executable
+        run: chmod +x ios_client_app/build.sh
+
+      - name: Compile and Package App
+        run: |
+          cd ios_client_app
+          ./build.sh
+
+      - name: Upload IPA Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: iControlApp
+          path: ios_client_app/iControlApp.ipa
+          if-no-files-found: error
