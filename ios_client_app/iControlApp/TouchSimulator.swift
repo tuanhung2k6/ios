@@ -39,6 +39,7 @@ class TouchSimulator {
     /// Tap at logical coordinates (Point)
     func tap(x: CGFloat, y: CGFloat) {
         print("[TouchSimulator] Tapping at (\(x), \(y))")
+        postTouchNotification(x: x, y: y)
         if ptFakeTouchLoaded {
             performPTFakeTouchTap(point: CGPoint(x: x, y: y))
         } else {
@@ -49,6 +50,7 @@ class TouchSimulator {
     /// Swipe from start point to end point with duration
     func swipe(fromX: CGFloat, fromY: CGFloat, toX: CGFloat, toY: CGFloat, duration: Double = 0.3) {
         print("[TouchSimulator] Swiping from (\(fromX), \(fromY)) to (\(toX), \(toY)) in \(duration)s")
+        postTouchNotification(x: fromX, y: fromY)
         if ptFakeTouchLoaded {
             performPTFakeTouchSwipe(from: CGPoint(x: fromX, y: fromY), to: CGPoint(x: toX, y: toY), duration: duration)
         } else {
@@ -58,6 +60,7 @@ class TouchSimulator {
     
     /// Touch Down raw event
     func touchDown(x: CGFloat, y: CGFloat, fingerId: Int = 1) {
+        postTouchNotification(x: x, y: y)
         if ptFakeTouchLoaded, let ptClass = NSClassFromString("PTFakeTouch") as AnyObject? {
             let selector = Selector(("touchDownAtPoint:pointId:"))
             if ptClass.responds(to: selector) {
@@ -90,6 +93,14 @@ class TouchSimulator {
         } else {
             performZXTouchCommand(cmd: "touchUp;\(fingerId);\(x);\(y)")
         }
+    }
+    
+    private func postTouchNotification(x: CGFloat, y: CGFloat) {
+        NotificationCenter.default.post(
+            name: NSNotification.Name("ShowTouchIndicatorNotification"),
+            object: nil,
+            userInfo: ["x": x, "y": y]
+        )
     }
     
     // MARK: - Internal PTFakeTouch execution

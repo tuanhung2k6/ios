@@ -83,6 +83,9 @@ class FloatingWindow: UIWindow {
         dragGesture.addTarget(self, action: #selector(handleDrag(_:)))
         containerView.addGestureRecognizer(dragGesture)
         
+        // Listen for simulated touch indicator notifications
+        NotificationCenter.default.addObserver(self, selector: #selector(handleTouchIndicatorNotification(_:)), name: Notification.Name("ShowTouchIndicatorNotification"), object: nil)
+        
         // Log text view
         logTextView.frame = CGRect(x: 10, y: 35, width: 260, height: 120)
         logTextView.backgroundColor = UIColor(white: 0.0, alpha: 0.3)
@@ -192,5 +195,38 @@ class FloatingWindow: UIWindow {
     
     func hideHUD() {
         self.isHidden = true
+    }
+    
+    // MARK: - Touch Indicator Overlay Animation
+    
+    @objc private func handleTouchIndicatorNotification(_ notification: Notification) {
+        guard let userInfo = notification.userInfo,
+              let x = userInfo["x"] as? CGFloat,
+              let y = userInfo["y"] as? CGFloat else { return }
+              
+        showTouchIndicator(at: CGPoint(x: x, y: y))
+    }
+    
+    func showTouchIndicator(at point: CGPoint) {
+        DispatchQueue.main.async {
+            // Create circular target dot
+            let indicator = UIView(frame: CGRect(x: point.x - 15, y: point.y - 15, width: 30, height: 30))
+            indicator.backgroundColor = UIColor(red: 239/255, green: 68/255, blue: 68/255, alpha: 0.4) // Semi-transparent red
+            indicator.layer.cornerRadius = 15
+            indicator.layer.borderWidth = 2
+            indicator.layer.borderColor = UIColor(red: 239/255, green: 68/255, blue: 68/255, alpha: 0.95).cgColor // Neon red border
+            indicator.isUserInteractionEnabled = false // Prevent blocking touches
+            
+            // Add directly to HUD window
+            self.addSubview(indicator)
+            
+            // Neon shockwave expand & fade out animation
+            UIView.animate(withDuration: 0.45, delay: 0, options: .curveEaseOut, animations: {
+                indicator.transform = CGAffineTransform(scaleX: 2.0, y: 2.0)
+                indicator.alpha = 0
+            }) { _ in
+                indicator.removeFromSuperview()
+            }
+        }
     }
 }

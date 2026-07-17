@@ -14,6 +14,7 @@ class WebSocketClient: NSObject {
     private var scriptRunnerTimer: Timer?
     private var scriptLines: [String] = []
     private var isScriptRunning = false
+    private var backgroundTaskId: UIBackgroundTaskIdentifier = .invalid
     
     private override init() {
         super.init()
@@ -21,6 +22,10 @@ class WebSocketClient: NSObject {
         
         // Listen for terminate signal from HUD button
         NotificationCenter.default.addObserver(self, selector: #selector(stopCurrentScript), name: Notification.Name("TerminateScriptNotification"), object: nil)
+        
+        // Listen for background state transitions
+        NotificationCenter.default.addObserver(self, selector: #selector(handleDidEnterBackground), name: UIApplication.didEnterBackgroundNotification, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(handleWillEnterForeground), name: UIApplication.willEnterForegroundNotification, object: nil)
     }
     
     private func setupMockUdid() {
@@ -310,6 +315,27 @@ class WebSocketClient: NSObject {
         }
         freeifaddrs(ifaddr)
         return address
+    }
+    
+    // MARK: - Background Processing Handlers
+    
+    @objc private func handleDidEnterBackground() {
+        guard isConnected else { return }
+        print("[WebSocketClient] App entered background. Requesting background time...")
+        self.backgroundTaskId = UIApplication.shared.beginBackgroundTask(withName: "iControlKeepAlive") { [weak self] in
+            guard let self = self else { return }
+            print("[WebSocketClient] Background task expired.")
+            UIApplication.shared.endBackgroundTask(self.backgroundTaskId)
+            self.backgroundTaskId = .invalid
+        }
+    }
+    
+    @objc private func handleWillEnterForeground() {
+        print("[WebSocketClient] App entered foreground.")
+        if self.backgroundTaskId != .invalid {
+            UIApplication.shared.endBackgroundTask(self.backgroundTaskId)
+            self.backgroundTaskId = .invalid
+        }
     }
 }
 
