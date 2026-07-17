@@ -25,7 +25,6 @@ xcrun -sdk iphoneos swiftc \
     -O \
     -o "${APP_DIR}/${APP_NAME}" \
     iControlApp/AppDelegate.swift \
-    iControlApp/SceneDelegate.swift \
     iControlApp/ViewController.swift \
     iControlApp/FloatingWindow.swift \
     iControlApp/TouchSimulator.swift \
