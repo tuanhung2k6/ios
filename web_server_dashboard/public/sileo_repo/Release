@@ -1,0 +1,16 @@
+Origin: TuanHungDZ Repo
+Label: TuanHungDZ
+Suite: stable
+Version: 1.0
+Codename: ios
+Architectures: iphoneos-arm64
+Components: main
+Description: Personal Sileo repository for custom tweaks
+MD5Sum:
+ aac792257929f51947fcc03c3ee14f73 539 Packages
+ e3d8a1e8a1c7978d168980968a8934f2 371 Packages.gz
+ a0630ad28dbe37bcd03c2e43facfc327 405 Packages.bz2
+SHA256:
+ f7096c3bd7379082cf845537dc13c4fc10882cc54cdd48311f32ebffe8f56e69 539 Packages
+ b672651757cdbe5667176cbcdf062a02a9c950240f7289ab299e6382af07d25a 371 Packages.gz
+ b544240436a7517bb207307480e8076049d0b4808822097e0d7ea0558faa6583 405 Packages.bz2

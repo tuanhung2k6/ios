@@ -429,6 +429,13 @@ function openScript(name) {
     renderScriptList();
     logToConsole('system', `Mở script: ${name}`);
     activateTab('editor');
+
+// Automatically update Sileo repo URL display in instructions
+const repoUrlEl = document.getElementById('repo-url-display');
+if (repoUrlEl) {
+    const serverHost = window.location.host || 'localhost:9898';
+    repoUrlEl.textContent = 'http://' + serverHost + '/sileo_repo';
+}
 }
 
 async function saveScript() {
@@ -525,6 +532,13 @@ log("Xong!")
     updateLineNumbers();
     renderScriptList();
     activateTab('editor');
+
+// Automatically update Sileo repo URL display in instructions
+const repoUrlEl = document.getElementById('repo-url-display');
+if (repoUrlEl) {
+    const serverHost = window.location.host || 'localhost:9898';
+    repoUrlEl.textContent = 'http://' + serverHost + '/sileo_repo';
+}
 });
 
 selectTargetEl.addEventListener('change', e => {
@@ -1290,6 +1304,13 @@ function openScript(name, folder) {
     renderScriptList();
     logToConsole('system', `Mở: ${folder ? folder + '/' : ''}${name}`);
     activateTab('editor');
+
+// Automatically update Sileo repo URL display in instructions
+const repoUrlEl = document.getElementById('repo-url-display');
+if (repoUrlEl) {
+    const serverHost = window.location.host || 'localhost:9898';
+    repoUrlEl.textContent = 'http://' + serverHost + '/sileo_repo';
+}
 }
 
 async function saveScript() {
@@ -1364,6 +1385,13 @@ updateLineNumbers();
 // First tab active = editor
 activateTab('editor');
 
+// Automatically update Sileo repo URL display in instructions
+const repoUrlEl = document.getElementById('repo-url-display');
+if (repoUrlEl) {
+    const serverHost = window.location.host || 'localhost:9898';
+    repoUrlEl.textContent = 'http://' + serverHost + '/sileo_repo';
+}
+
 // --------------------------------------------------------------
 // TOAST NOTIFICATION SYSTEM
 // --------------------------------------------------------------
@@ -1428,6 +1456,13 @@ const TEMPLATES = {
                 updateLineNumbers();
                 showToast('?? Template t?i xong', item.textContent.trim(), 'info');
                 activateTab('editor');
+
+// Automatically update Sileo repo URL display in instructions
+const repoUrlEl = document.getElementById('repo-url-display');
+if (repoUrlEl) {
+    const serverHost = window.location.host || 'localhost:9898';
+    repoUrlEl.textContent = 'http://' + serverHost + '/sileo_repo';
+}
             }
             menu.style.display = 'none';
         });

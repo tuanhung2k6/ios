@@ -293,9 +293,53 @@
                 <!-- ── TAB: DEVICE INFO ── -->
                 <div class="tab-panel" id="tab-info">
                     <div class="device-info-panel" id="device-info-panel">
-                        <div class="no-device-selected" id="no-device-placeholder">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="48" height="48" style="opacity:0.3"><rect x="5" y="2" width="14" height="20" rx="3"/></svg>
-                            <p>Chọn một thiết bị để xem thông tin</p>
+                        <div class="no-device-selected" id="no-device-placeholder" style="flex-direction: column; align-items: stretch; justify-content: flex-start; max-width: 680px; margin: 0 auto; padding: 20px;">
+                            <div style="text-align: center; margin-bottom: 20px; padding-top: 10px;">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="36" height="36" style="opacity:0.4; margin-bottom: 8px; color: var(--accent-indigo);"><rect x="5" y="2" width="14" height="20" rx="3"/></svg>
+                                <p style="font-size: 13px; font-weight: 600; color: var(--text-primary);">Chọn thiết bị để xem thông tin chi tiết</p>
+                                <p style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">Hoặc tải về cài đặt ứng dụng điều khiển lên iPhone/iPad dưới đây</p>
+                            </div>
+
+                            <!-- Installers & Guides -->
+                            <div class="setup-guides-grid" style="display: flex; flex-direction: column; gap: 14px;">
+                                <!-- Jailbroken Devices -->
+                                <div class="setup-card" style="background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius); padding: 16px;">
+                                    <h3 style="font-size: 12px; font-weight: 700; color: var(--accent-indigo); margin-bottom: 10px; display: flex; align-items: center; gap: 8px;">
+                                        🔓 Máy đã Jailbreak (Sileo / Zebra / Cydia)
+                                    </h3>
+                                    <p style="font-size: 11px; color: var(--text-secondary); line-height: 1.6; margin-bottom: 10px;">
+                                        1. Mở ứng dụng <b>Sileo</b> trên thiết bị của bạn.<br>
+                                        2. Thêm nguồn (Repository) mới với địa chỉ sau:<br>
+                                        <code class="mono-code" id="repo-url-display" style="display: block; background: var(--bg-input); padding: 6px 10px; border-radius: 6px; border: 1px solid var(--border-subtle); color: var(--accent-cyan); font-family: monospace; font-size: 11px; margin: 6px 0; word-break: break-all;">http://IP_ADDRESS:9898/sileo_repo</code>
+                                        3. Tìm kiếm và cài đặt tweak tên <b>IOSControl</b> bản Premium.<br>
+                                        4. Hoặc tải trực tiếp file DEB để cài đặt qua Filza:
+                                    </p>
+                                    <a href="/downloads/com.tuanhungdz.ioscontrol_1.8.0_iphoneos-arm64_rebuilt.deb" class="btn-action success" style="display: inline-flex; align-items: center; gap: 8px; text-decoration: none; font-size: 11px; padding: 6px 12px;" download>
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                                        Tải Tweak IOSControl (DEB)
+                                    </a>
+                                </div>
+
+                                <!-- TrollStore / Sideload -->
+                                <div class="setup-card" style="background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius); padding: 16px;">
+                                    <h3 style="font-size: 12px; font-weight: 700; color: var(--accent-emerald); margin-bottom: 10px; display: flex; align-items: center; gap: 8px;">
+                                        📦 Sideload / TrollStore (Không Jailbreak)
+                                    </h3>
+                                    <p style="font-size: 11px; color: var(--text-secondary); line-height: 1.6; margin-bottom: 10px;">
+                                        Sử dụng TrollStore, AltStore, Sideloadly để cài đặt file IPA của ứng dụng iControl lên iPhone.
+                                    </p>
+                                    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                                        <a href="/downloads/iControlApp_patched.ipa" class="btn-action" style="display: inline-flex; align-items: center; gap: 8px; text-decoration: none; font-size: 11px; padding: 6px 12px;" download>
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                                            Tải Patched IPA (Khuyên dùng)
+                                        </a>
+                                        <a href="/downloads/iControlApp_personal.ipa" class="btn-action" style="display: inline-flex; align-items: center; gap: 8px; text-decoration: none; font-size: 11px; padding: 6px 12px;" download>
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                                            Tải Personal IPA
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                         <!-- Device detail (filled by JS) -->
                         <div class="device-detail-view" id="device-detail-view" style="display:none">
