@@ -1542,31 +1542,39 @@ setTimeout(function() { showToast('?? iOSControl Pro v3.0', 'Server s?n s�ng. 
 // ──────────────────────────────────────────────────────────────
 // MONACO EDITOR CDN INITIALIZATION
 // ──────────────────────────────────────────────────────────────
-require.config({ paths: { vs: 'https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs' } });
-require(['vs/editor/editor.main'], function () {
-    const initialCode = `-- iOSControl Lua Script
+if (typeof require !== 'undefined') {
+    require.config({ paths: { vs: 'https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs' } });
+    require(['vs/editor/editor.main'], function () {
+        const initialCode = `-- iOSControl Lua Script
 -- Nhập Lua Script để điều khiển thiết bị...
 tap(100, 200)
 sleep(1)
 swipe(100, 500, 100, 200, 0.5)
 `;
-    monacoEditor = monaco.editor.create(document.getElementById('editor-container'), {
-        value: initialCode,
-        language: 'lua',
-        theme: 'vs-dark',
-        automaticLayout: true,
-        fontFamily: "'JetBrains Mono', monospace",
-        fontSize: 13,
-        minimap: { enabled: false }
+        monacoEditor = monaco.editor.create(document.getElementById('editor-container'), {
+            value: initialCode,
+            language: 'lua',
+            theme: 'vs-dark',
+            automaticLayout: true,
+            fontFamily: "'JetBrains Mono', monospace",
+            fontSize: 13,
+            minimap: { enabled: false }
+        });
+        
+        // Relay change events to app logic
+        monacoEditor.onDidChangeModelContent(function() {
+            if (typeof window._onMonacoInput === 'function') {
+                window._onMonacoInput();
+            }
+        });
     });
-    
-    // Relay change events to app logic
-    monacoEditor.onDidChangeModelContent(function() {
-        if (typeof window._onMonacoInput === 'function') {
-            window._onMonacoInput();
-        }
-    });
-});
+} else {
+    console.warn("Monaco Editor CDN is offline or blocked. Falling back to default textarea.");
+    const textarea = document.getElementById('code-textarea');
+    if (textarea) textarea.style.display = 'block';
+    const container = document.getElementById('editor-container');
+    if (container) container.style.display = 'none';
+}
 
 // ──────────────────────────────────────────────────────────────
 // PREMIUM MAGNIFIER GLASS & COLOR COORDINATE PICKER (HALLMARK STYLE)

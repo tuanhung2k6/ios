@@ -395,11 +395,12 @@
             <!-- VSCODE STATUS BAR (BOTTOM) -->
             <footer class="status-bar">
                 <div class="status-left">
-                    <span class="status-item" id="status-ws-indicator">🔴 Offline</span>
-                    <span class="status-item" id="status-device-indicator">Devices: 0</span>
+                    <span class="status-item"><span class="connection-dot disconnected" id="ws-dot"></span> <span id="status-ws-indicator">Offline</span></span>
+                    <span class="status-item" id="status-device-indicator">Devices: <span id="device-count">0</span></span>
+                    <span class="status-item" id="server-address-display">localhost:9898</span>
                 </div>
                 <div class="status-center">
-                    <span class="status-item font-semibold" style="color:var(--accent-cyan)">iControl Script Engine v4.0</span>
+                    <span class="status-item font-semibold" style="color:var(--accent-cyan)">iControl Script Engine v4.2</span>
                 </div>
                 <div class="status-right">
                     <span class="status-item">UTF-8</span>
