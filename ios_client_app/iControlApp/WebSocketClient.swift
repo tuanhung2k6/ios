@@ -400,7 +400,7 @@ class WebSocketClient: NSObject {
     }
     
     // MARK: - Helper Local IP
-    private func getWiFiAddress() -> String? {
+    func getWiFiAddress() -> String? {
         var address: String?
         var ifaddr: UnsafeMutablePointer<ifaddrs>?
         guard getifaddrs(&ifaddr) == 0 else { return nil }
