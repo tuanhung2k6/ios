@@ -25,6 +25,7 @@
             <div id="quick-device-info" style="font-size:11px; color:var(--cyan-glow); font-family:var(--font-tech); text-transform:uppercase; font-weight:700;">
                 Không có thiết bị chọn
             </div>
+            <button class="activity-btn" id="btn-lang-toggle" title="Switch Language (Chuyển ngôn ngữ)" style="width:32px; height:28px; border-radius:4px; font-family:var(--font-display); font-weight:700; font-size:11px; color:var(--color-accent); border:1px solid var(--color-rule); padding:0; background:transparent; cursor:pointer; margin-right:4px;">VI</button>
             <div class="status-indicator">
                 <span class="connection-dot disconnected" id="ws-dot"></span>
                 <span id="status-ws-indicator" style="font-family:var(--font-tech); font-weight:600; text-transform:uppercase; color:var(--text-secondary);">Offline</span>
@@ -218,6 +219,10 @@
                         <span>🔀</span>
                         <span>Flow Designer</span>
                     </div>
+                    <div class="editor-tab" id="btn-toggle-converter-view">
+                        <span>🐍</span>
+                        <span>Converter</span>
+                    </div>
                 </div>
                 <div class="editor-controls" style="display:flex; gap:8px;">
                     <input type="text" id="script-name" value="main.lua" class="form-input" style="width:140px; height:28px; padding:2px 8px; font-size:11px;">
@@ -249,6 +254,13 @@
                             <button class="btn-action success" id="btn-flow-generate" style="font-size:10px; padding:6px 12px;">⚡ Sinh mã LUA</button>
                             <button class="btn-action danger" id="btn-flow-clear" style="font-size:10px; padding:6px 12px;">🗑️ Xóa canvas</button>
                         </div>
+                    </div>
+                    <!-- Python Converter View (v5.2) -->
+                    <div class="editor-panel-view" id="editor-view-converter" style="display:none; position:relative; width:100%; height:100%; padding:20px; background:var(--color-paper); overflow-y:auto; flex-direction:column; gap:16px;">
+                        <h3 style="font-family:var(--font-display); font-size:13px; font-weight:700; color:var(--color-accent); text-transform:uppercase; letter-spacing:0.5px;">🐍 Python to Lua Script Converter</h3>
+                        <p style="font-size:11px; color:var(--color-neutral);">Nhập mã nguồn Python cơ bản để biên dịch tự động sang mã điều khiển kịch bản LUA tương thích:</p>
+                        <textarea id="python-input-area" class="form-input" style="flex:1; min-height:220px; font-family:var(--font-mono); font-size:12px; background:var(--color-paper-2); resize:none;" placeholder="VD:&#10;click(100, 200)&#10;time.sleep(1)&#10;swipe(150, 600, 150, 200)&#10;print('Hoàn thành!')"></textarea>
+                        <button class="btn-action success" id="btn-convert-python" style="align-self:flex-start;">⚡ Biên dịch sang LUA & Nạp vào Editor</button>
                     </div>
                 </div>
 
@@ -342,6 +354,47 @@
 
     <!-- Toast Notifications Container -->
     <div id="toast-container" style="position:fixed;bottom:30px;right:20px;z-index:99999;display:flex;flex-direction:column;gap:8px;pointer-events:none;"></div>
+
+    <!-- Screen Zoom & Color Helper Modal (v5.2) -->
+    <div class="modal-overlay" id="zoomModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.85); z-index:10000; align-items:center; justify-content:center; padding:20px; backdrop-filter:blur(8px);">
+        <div class="zoom-modal-content" style="background:var(--color-paper-2); border:1px solid var(--color-rule); border-radius:12px; max-width:800px; width:100%; display:flex; flex-direction:column; overflow:hidden; box-shadow:var(--shadow-panel);">
+            <div class="zoom-modal-header" style="padding:14px 20px; border-bottom:1px solid var(--color-rule); display:flex; justify-content:space-between; align-items:center; width:100%;">
+                <h3 style="font-family:var(--font-display); font-size:12px; font-weight:700; color:var(--color-ink); display:flex; align-items:center; gap:8px; text-transform:uppercase; letter-spacing:0.5px;">
+                    🔍 Zoom Screen & Color Picker Helper
+                </h3>
+                <button class="activity-btn" id="zoomCloseBtn" style="width:24px; height:24px; font-size:14px; border-radius:4px; font-weight:bold; color:var(--color-rose); border:none; background:transparent; cursor:pointer;">✕</button>
+            </div>
+            <div class="zoom-body" style="display:flex; flex-direction:row; height:480px;">
+                <!-- Left Screen Area -->
+                <div class="zoom-screen-col" style="flex:1.2; display:flex; flex-direction:column; border-right:1px solid var(--color-rule); background:#000; position:relative; overflow:hidden;">
+                    <div class="zoom-screen-wrapper" style="flex:1; display:flex; align-items:center; justify-content:center; overflow:auto; cursor:crosshair;">
+                        <img id="zoomScreenImage" style="max-width:100%; max-height:100%; object-fit:contain;" src="" alt="Device Screen Zoomed">
+                    </div>
+                    <div class="screen-info" style="height:32px; background:var(--color-paper); border-top:1px solid var(--color-rule); display:flex; align-items:center; justify-content:space-between; padding:0 12px; font-size:10px; color:var(--color-neutral);">
+                        <span id="zoomCoords">x: — y: —</span>
+                        <div style="display:flex; align-items:center; gap:6px;">
+                            <span id="zoomPixelColor">HEX: —</span>
+                            <span id="zoomColorSwatch" style="display:none; width:12px; height:12px; border-radius:2px; border:1px solid rgba(255,255,255,0.2);"></span>
+                        </div>
+                    </div>
+                </div>
+                <!-- Right Quick Controls -->
+                <div class="zoom-controls-col" style="flex:0.8; padding:20px; display:flex; flex-direction:column; gap:12px; overflow-y:auto; background:var(--color-paper-2);">
+                    <h4 style="font-family:var(--font-display); font-size:10px; font-weight:700; color:var(--color-neutral); text-transform:uppercase; margin-bottom:4px; letter-spacing:0.5px;">Thao tác nhanh</h4>
+                    <button class="btn-action" onclick="quickSwipe('up')" style="width:100%; justify-content:center;">⬆️ Vuốt lên (Swipe Up)</button>
+                    <button class="btn-action" onclick="quickSwipe('down')" style="width:100%; justify-content:center;">⬇️ Vuốt xuống (Swipe Down)</button>
+                    <button class="btn-action" onclick="quickSwipe('left')" style="width:100%; justify-content:center;">⬅️ Vuốt sang trái (Swipe Left)</button>
+                    <button class="btn-action" onclick="quickSwipe('right')" style="width:100%; justify-content:center;">➡️ Vuốt sang phải (Swipe Right)</button>
+                    
+                    <span style="height:1px; background:var(--color-rule); margin:6px 0;"></span>
+                    
+                    <button class="btn-action success" onclick="quickVolume('up')" style="width:100%; justify-content:center;">🔊 Tăng âm lượng</button>
+                    <button class="btn-action success" onclick="quickVolume('down')" style="width:100%; justify-content:center;">🔉 Giảm âm lượng</button>
+                    <button class="btn-action danger" onclick="quickLock()" style="width:100%; justify-content:center;">🔒 Khóa / Bật nguồn</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <script src="app.js"></script>
 </body>

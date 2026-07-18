@@ -1,4 +1,4 @@
-﻿/* ═══════════════════════════════════════════════════════
+/* ═══════════════════════════════════════════════════════
    iOSControl Pro — Frontend Application Logic v2.0
 ═══════════════════════════════════════════════════════ */
 
@@ -2281,4 +2281,294 @@ window.fetch = function(url, options) {
         }
     }
     return _origFetch(url, options);
+};
+
+
+// ──────────────────────────────────────────────────────────────
+// v5.2 REFERENCE APP FEATURES INTEGRATION (ZOOM, CONVERTER, I18N)
+// ──────────────────────────────────────────────────────────────
+
+// 1. MULTILINGUAL I18N DICTIONARY & LOGIC
+const btnLangToggle = document.getElementById('btn-lang-toggle');
+let currentLang = 'VI';
+
+const translations = {
+    EN: {
+        'explorer-header': 'EXPLORER: SCRIPTS',
+        'btn-new-folder': 'New Folder',
+        'btn-new-script': 'New Script',
+        'btn-create-workspace': '📁 Create Project',
+        'btn-delete-workspace': '🗑️ Delete Project',
+        'btn-refresh-devices': 'Refresh',
+        'btn-git-commit': '🐙 Commit & Push origin',
+        'btn-save-passcode': '🛡️ Save Passcode',
+        'btn-save': 'Save',
+        'btn-run': 'Run',
+        'btn-stop': 'Stop',
+        'btn-run-all': 'Run Multi',
+        'btn-stop-all': 'Stop Multi',
+        'quick-device-info': 'No device selected',
+        'status-ws-indicator': 'Offline',
+        'status-ws-indicator-bar': 'Offline',
+        'status-device-indicator': 'Devices: 0',
+        'btn-convert-python': '⚡ Compile to LUA & Load'
+    },
+    VI: {
+        'explorer-header': 'EXPLORER: SCRIPTS',
+        'btn-new-folder': 'Tạo Thư mục',
+        'btn-new-script': 'Tạo Script',
+        'btn-create-workspace': '📁 Tạo Dự án',
+        'btn-delete-workspace': '🗑️ Xóa Dự án',
+        'btn-refresh-devices': 'Làm mới',
+        'btn-git-commit': '🐙 Commit & Push origin',
+        'btn-save-passcode': '🛡️ Lưu Mật Khẩu',
+        'btn-save': 'Lưu',
+        'btn-run': 'Chạy',
+        'btn-stop': 'Dừng',
+        'btn-run-all': 'Chạy Hàng Loạt',
+        'btn-stop-all': 'Dừng Hàng Loạt',
+        'quick-device-info': 'Không có thiết bị chọn',
+        'status-ws-indicator': 'Offline',
+        'status-ws-indicator-bar': 'Offline',
+        'status-device-indicator': 'Devices: 0',
+        'btn-convert-python': '⚡ Biên dịch sang LUA & Nạp vào Editor'
+    }
+};
+
+if (btnLangToggle) {
+    btnLangToggle.addEventListener('click', () => {
+        currentLang = currentLang === 'VI' ? 'EN' : 'VI';
+        btnLangToggle.textContent = currentLang;
+        showToast('🌐 Ngôn ngữ / Language', 'Đã chuyển sang: ' + (currentLang === 'VI' ? 'Tiếng Việt' : 'English'), 'info');
+        
+        // Apply translations
+        const langData = translations[currentLang];
+        const dict = {
+            'EXPLORER: SCRIPTS': langData['explorer-header'],
+            'Tạo dự án con': langData['btn-create-workspace'],
+            'Xóa dự án con': langData['btn-delete-workspace'],
+            'Làm mới': langData['btn-refresh-devices'],
+            '🐙 Commit & Push origin': langData['btn-git-commit'],
+            '🛡️ Lưu Mật Khẩu': langData['btn-save-passcode'],
+            'Lưu': langData['btn-save'],
+            'Chạy': langData['btn-run'],
+            'Dừng': langData['btn-stop'],
+            'Chạy Hàng Loạt': langData['btn-run-all'],
+            'Dừng Hàng Loạt': langData['btn-stop-all'],
+            'Biên dịch sang LUA & Nạp vào Editor': langData['btn-convert-python']
+        };
+        
+        document.querySelectorAll('button, span, h2, h3, a').forEach(el => {
+            const txt = el.textContent.trim();
+            if (dict[txt]) {
+                el.textContent = dict[txt];
+            }
+        });
+    });
+}
+
+// 2. PYTHON TO LUA CONVERTER
+const btnToggleConverter = document.getElementById('btn-toggle-converter-view');
+const btnToggleCodeView = document.getElementById('btn-toggle-code-view');
+const btnToggleFlowView = document.getElementById('btn-toggle-flow-view');
+const converterView = document.getElementById('editor-view-converter');
+const codeView = document.getElementById('editor-view-code');
+const flowView = document.getElementById('editor-view-flow');
+
+function deactivateAllEditorViews() {
+    [codeView, flowView, converterView].forEach(v => { if (v) v.style.display = 'none'; });
+    document.querySelectorAll('.editor-tab').forEach(t => t.classList.remove('active'));
+}
+
+if (btnToggleConverter) {
+    btnToggleConverter.addEventListener('click', () => {
+        deactivateAllEditorViews();
+        btnToggleConverter.classList.add('active');
+        if (converterView) {
+            converterView.style.display = 'flex';
+        }
+    });
+}
+
+if (btnToggleCodeView) {
+    btnToggleCodeView.addEventListener('click', () => {
+        deactivateAllEditorViews();
+        btnToggleCodeView.classList.add('active');
+        if (codeView) codeView.style.display = 'block';
+    });
+}
+
+if (btnToggleFlowView) {
+    btnToggleFlowView.addEventListener('click', () => {
+        deactivateAllEditorViews();
+        btnToggleFlowView.classList.add('active');
+        if (flowView) flowView.style.display = 'block';
+    });
+}
+
+const btnConvertPython = document.getElementById('btn-convert-python');
+const pythonInputArea = document.getElementById('python-input-area');
+
+if (btnConvertPython && pythonInputArea) {
+    btnConvertPython.addEventListener('click', () => {
+        const pyCode = pythonInputArea.value;
+        if (!pyCode.trim()) {
+            showToast('⚠️ Trống', 'Vui lòng nhập mã Python', 'warn');
+            return;
+        }
+
+        // Basic Regex Translation from Python to Lua
+        let luaCode = "-- Biên dịch tự động từ Python sang LUA\n";
+        const lines = pyCode.split('\n');
+        
+        lines.forEach(line => {
+            let parsed = line.trim();
+            if (!parsed) {
+                luaCode += "\n";
+                return;
+            }
+            if (parsed.startsWith('#')) {
+                luaCode += "-- " + parsed.substring(1).trim() + "\n";
+                return;
+            }
+            
+            // Translate click/tap
+            parsed = parsed.replace(/(?:click|tap)\s*\(\s*(\d+)\s*,\s*(\d+)\s*\)/g, 'tap($1, $2)');
+            // Translate sleep
+            parsed = parsed.replace(/(?:time\.sleep|sleep)\s*\(\s*(\d+(\.\d+)?)\s*\)/g, 'sleep($1)');
+            // Translate swipe
+            parsed = parsed.replace(/swipe\s*\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)/g, 'swipe($1, $2, $3, $4, 0.5)');
+            // Translate print
+            parsed = parsed.replace(/print\s*\(\s*['"](.*?)['"]\s*\)/g, 'log("$1")');
+            
+            luaCode += parsed + "\n";
+        });
+
+        // Load into editor
+        if (monacoEditor) {
+            monacoEditor.setValue(luaCode);
+        } else if (codeTextarea) {
+            codeTextarea.value = luaCode;
+        }
+        
+        // Go back to code view
+        deactivateAllEditorViews();
+        if (btnToggleCodeView) btnToggleCodeView.classList.add('active');
+        if (codeView) codeView.style.display = 'block';
+        
+        showToast('🐍 Biên dịch', 'Đã chuyển đổi mã Python sang LUA', 'success');
+        logToConsole('success', 'Biên dịch Python -> LUA thành công.');
+    });
+}
+
+// 3. SCREEN ZOOM & COLOR PICKER HELPER
+const zoomModal = document.getElementById('zoomModal');
+const zoomCloseBtn = document.getElementById('zoomCloseBtn');
+const zoomScreenImage = document.getElementById('zoomScreenImage');
+const zoomCoords = document.getElementById('zoomCoords');
+const zoomPixelColor = document.getElementById('zoomPixelColor');
+const zoomColorSwatch = document.getElementById('zoomColorSwatch');
+
+if (screenImageEl) {
+    screenImageEl.addEventListener('dblclick', () => {
+        if (!selectedDeviceUdid) return;
+        if (zoomModal && zoomScreenImage) {
+            zoomScreenImage.src = screenImageEl.src;
+            zoomModal.style.display = 'flex';
+            showToast('🔍 Zoom & Color', 'Nhấp đúp chuột để đóng hoặc bấm ✕', 'info');
+        }
+    });
+}
+
+if (zoomCloseBtn) {
+    zoomCloseBtn.addEventListener('click', () => {
+        if (zoomModal) zoomModal.style.display = 'none';
+    });
+}
+
+// Canvas color extractor logic
+if (zoomScreenImage) {
+    zoomScreenImage.addEventListener('mousemove', (e) => {
+        const rect = zoomScreenImage.getBoundingClientRect();
+        
+        // Original standard coordinates scaled to standard phone dimensions (e.g. 750x1334)
+        const scaleX = 750 / rect.width;
+        const scaleY = 1334 / rect.height;
+        
+        const x = Math.round((e.clientX - rect.left) * scaleX);
+        const y = Math.round((e.clientY - rect.top) * scaleY);
+        
+        if (x >= 0 && x <= 750 && y >= 0 && y <= 1334) {
+            if (zoomCoords) zoomCoords.textContent = `x: ${x}  y: ${y}`;
+            
+            // Draw one pixel to get color
+            const canvas = document.createElement('canvas');
+            canvas.width = zoomScreenImage.naturalWidth || 1;
+            canvas.height = zoomScreenImage.naturalHeight || 1;
+            const ctx = canvas.getContext('2d');
+            try {
+                ctx.drawImage(zoomScreenImage, 0, 0);
+                const imgX = Math.round((e.clientX - rect.left) * (canvas.width / rect.width));
+                const imgY = Math.round((e.clientY - rect.top) * (canvas.height / rect.height));
+                const pixel = ctx.getImageData(imgX, imgY, 1, 1).data;
+                const hex = '#' + ((1 << 24) + (pixel[0] << 16) + (pixel[1] << 8) + pixel[2]).toString(16).slice(1).toUpperCase();
+                
+                if (zoomPixelColor) zoomPixelColor.textContent = `HEX: ${hex}`;
+                if (zoomColorSwatch) {
+                    zoomColorSwatch.style.display = 'inline-block';
+                    zoomColorSwatch.style.backgroundColor = hex;
+                }
+            } catch(err) {}
+        }
+    });
+    
+    // Clicking zoom screen inserts tap coordinate
+    zoomScreenImage.addEventListener('click', (e) => {
+        const rect = zoomScreenImage.getBoundingClientRect();
+        const scaleX = 750 / rect.width;
+        const scaleY = 1334 / rect.height;
+        const x = Math.round((e.clientX - rect.left) * scaleX);
+        const y = Math.round((e.clientY - rect.top) * scaleY);
+        
+        if (x >= 0 && x <= 750 && y >= 0 && y <= 1334) {
+            const script = `tap(${x}, ${y})\n`;
+            insertAtCursor(codeTextarea, script);
+            showToast('👆 Thao tác', `Chèn lệnh tap(${x}, ${y})`, 'success');
+            
+            // Trigger command over WebSocket to device
+            if (selectedDeviceUdid) {
+                sendWs({ action: 'run_script', targetUdid: selectedDeviceUdid, script: `tap(${x}, ${y})`, scriptName: 'live_tap.lua' });
+            }
+        }
+    });
+}
+
+// Global Quick Action handlers
+window.quickSwipe = function(direction) {
+    if (!selectedDeviceUdid) return;
+    let script = '';
+    if (direction === 'up') script = 'swipe(375, 900, 375, 200, 500)';
+    else if (direction === 'down') script = 'swipe(375, 200, 375, 900, 500)';
+    else if (direction === 'left') script = 'swipe(600, 667, 100, 667, 500)';
+    else if (direction === 'right') script = 'swipe(100, 667, 600, 667, 500)';
+    
+    if (script) {
+        sendWs({ action: 'run_script', targetUdid: selectedDeviceUdid, script: script, scriptName: 'quick_swipe.lua' });
+        showToast('↔️ Vuốt nhanh', 'Gửi lệnh vuốt ' + direction, 'info');
+    }
+};
+
+window.quickVolume = function(action) {
+    if (!selectedDeviceUdid) return;
+    const script = `pressVolume("${action}")`;
+    sendWs({ action: 'run_script', targetUdid: selectedDeviceUdid, script: script, scriptName: 'volume.lua' });
+    showToast('🔊 Phím cứng', 'Điều chỉnh âm lượng ' + action, 'info');
+};
+
+window.quickLock = function() {
+    if (!selectedDeviceUdid) return;
+    // Power button lock simulation via Volume Down press (tweak fallback) or volume button lock
+    const script = `pressVolume("down")`;
+    sendWs({ action: 'run_script', targetUdid: selectedDeviceUdid, script: script, scriptName: 'lock.lua' });
+    showToast('🔒 Phím cứng', 'Gửi lệnh khóa màn hình / nguồn', 'info');
 };
