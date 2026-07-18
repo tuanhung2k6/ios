@@ -1,7 +1,7 @@
 {
   "totalRuns": 0,
-  "totalTaps": 3,
-  "totalSwipes": 0,
+  "totalTaps": 4,
+  "totalSwipes": 1,
   "totalRunTimeMs": 0,
   "devices": {
     "e2f27aea647a4dbdaefe7cdd233c4c29": {
@@ -11,11 +11,29 @@
       "swipes": 0,
       "totalMs": 0,
       "lastRun": null
+    },
+    "3b3442a8a7d54bc8bcb48b2e62711fcd": {
+      "udid": "3b3442a8a7d54bc8bcb48b2e62711fcd",
+      "runs": 0,
+      "taps": 1,
+      "swipes": 1,
+      "totalMs": 0,
+      "lastRun": null
     }
   },
   "sessions": [
     {
       "udid": "e2f27aea647a4dbdaefe7cdd233c4c29",
+      "startedAt": null,
+      "durationMs": 0
+    },
+    {
+      "udid": "3b3442a8a7d54bc8bcb48b2e62711fcd",
+      "startedAt": null,
+      "durationMs": 0
+    },
+    {
+      "udid": "3b3442a8a7d54bc8bcb48b2e62711fcd",
       "startedAt": null,
       "durationMs": 0
     }

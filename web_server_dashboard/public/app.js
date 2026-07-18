@@ -1715,7 +1715,8 @@ if (vncToggleBtn) {
 
         vncActive = !vncActive;
         vncToggleBtn.classList.toggle('active', vncActive);
-        document.getElementById('vnc-toggle-label').textContent = vncActive ? 'Tắt VNC Stream' : 'Bật VNC Stream';
+        const vncLabel = document.getElementById('vnc-toggle-label');
+        if (vncLabel) vncLabel.textContent = vncActive ? 'Tắt VNC Stream' : 'Bật VNC Stream';
 
         if (vncActive) {
             // Stop screenshot streaming if active
