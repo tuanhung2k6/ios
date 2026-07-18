@@ -9,6 +9,8 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
+    <!-- Monaco Editor Loader -->
+    <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs/loader.js"></script>
 </head>
 <body>
     <div class="app-shell">
@@ -161,11 +163,10 @@
                         </div>
                     </div>
 
-                    <!-- Code Editor -->
-                    <div class="code-editor-wrap">
-                        <div class="line-numbers" id="line-numbers"><span>1</span></div>
-                        <textarea id="code-textarea" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off"
-                            placeholder="-- Nhập Lua Script để điều khiển iOS thiết bị từ xa...&#10;-- Ví dụ:&#10;tap(100, 200)&#10;sleep(1)&#10;swipe(100, 500, 100, 200, 0.5)"></textarea>
+                    <!-- Monaco Code Editor -->
+                    <div class="code-editor-wrap" style="padding: 0; background: #1e1e1e; overflow: hidden; border: 1px solid var(--border-subtle); border-radius: var(--radius);">
+                        <div id="editor-container" style="width: 100%; height: 100%;"></div>
+                        <textarea id="code-textarea" style="display: none;"></textarea>
                     </div>
 
                     <!-- Console -->
@@ -250,13 +251,35 @@
                         <span class="screen-fps" id="screen-fps"></span>
                     </div>
                     <div class="screen-viewer">
-                        <div class="device-frame" id="device-frame">
+                        <div class="device-frame" id="device-frame" style="position: relative;">
                             <div class="screen-placeholder" id="screen-placeholder">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" width="48" height="48" opacity="0.25"><rect x="5" y="2" width="14" height="20" rx="3"/><circle cx="12" cy="18" r="0.5" fill="currentColor"/></svg>
                                 <p>Chưa có màn hình</p>
                                 <small>Chụp ảnh màn hình hoặc bật stream để xem</small>
                             </div>
-                            <img id="screen-image" alt="Device Screen" style="display:none; width:100%; border-radius:8px;">
+                            <img id="screen-image" alt="Device Screen" style="display:none; width:100%; border-radius:8px; pointer-events: auto;">
+                            <!-- Magnifier Glass -->
+                            <div id="magnifier-glass" style="display: none; position: absolute; pointer-events: none; border: 2.5px solid var(--accent-cyan); border-radius: 50%; width: 130px; height: 130px; box-shadow: 0 0 25px rgba(6,182,212,0.5), inset 0 0 10px rgba(0,0,0,0.5); overflow: hidden; z-index: 100; background: var(--bg-surface);">
+                                <canvas id="magnifier-canvas" width="130" height="130" style="width: 100%; height: 100%; display: block; image-rendering: pixelated;"></canvas>
+                            </div>
+                        </div>
+                        
+                        <!-- Premium Color & Coordinate Info Bar -->
+                        <div class="picker-info-bar" id="picker-info-bar" style="display: none;">
+                            <div class="picker-info-item">
+                                <span class="picker-label">🎯 Tọa độ</span>
+                                <span class="picker-value" id="picker-coords">x: — y: —</span>
+                            </div>
+                            <div class="picker-info-item">
+                                <span class="picker-label">🎨 Màu</span>
+                                <span class="picker-color-swatch" id="picker-color-swatch"></span>
+                                <span class="picker-value" id="picker-color-hex">#—</span>
+                                <span class="picker-value" id="picker-color-rgb" style="opacity: 0.5; font-size: 10px;">(—)</span>
+                            </div>
+                            <div class="picker-info-item code-item">
+                                <span class="picker-label">⌨️ Lệnh</span>
+                                <span class="picker-value code" id="picker-code">tap(—, —)</span>
+                            </div>
                         </div>
                     </div>
                 </div>

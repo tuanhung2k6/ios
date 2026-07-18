@@ -945,11 +945,25 @@ function handleScreenshotReceived(msg) {
 }
 
 function insertAtCursor(textarea, text) {
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    textarea.value = textarea.value.substring(0, start) + text + textarea.value.substring(end);
-    textarea.selectionStart = textarea.selectionEnd = start + text.length;
-    textarea.focus();
+    if (monacoEditor) {
+        const selection = monacoEditor.getSelection();
+        const range = new monaco.Range(
+            selection.startLineNumber,
+            selection.startColumn,
+            selection.endLineNumber,
+            selection.endColumn
+        );
+        const id = { major: 1, minor: 1 };
+        const textEdit = { identifier: id, range: range, text: text, forceMoveMarkers: true };
+        monacoEditor.executeEdits("my-source", [textEdit]);
+        monacoEditor.focus();
+    } else {
+        const start = textarea.selectionStart || 0;
+        const end = textarea.selectionEnd || 0;
+        textarea.value = textarea.value.substring(0, start) + text + textarea.value.substring(end);
+        textarea.selectionStart = textarea.selectionEnd = start + text.length;
+        textarea.focus();
+    }
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -1488,3 +1502,132 @@ function showDeviceDetail(udid) {
 
 // Welcome toast
 setTimeout(function() { showToast('?? iOSControl Pro v3.0', 'Server s?n s�ng. Ch? thi?t b? k?t n?i...', 'system', 5000); }, 800);
+
+// ──────────────────────────────────────────────────────────────
+// MONACO EDITOR CDN INITIALIZATION
+// ──────────────────────────────────────────────────────────────
+require.config({ paths: { vs: 'https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs' } });
+require(['vs/editor/editor.main'], function () {
+    const initialCode = `-- iOSControl Lua Script
+-- Nhập Lua Script để điều khiển thiết bị...
+tap(100, 200)
+sleep(1)
+swipe(100, 500, 100, 200, 0.5)
+`;
+    monacoEditor = monaco.editor.create(document.getElementById('editor-container'), {
+        value: initialCode,
+        language: 'lua',
+        theme: 'vs-dark',
+        automaticLayout: true,
+        fontFamily: "'JetBrains Mono', monospace",
+        fontSize: 13,
+        minimap: { enabled: false }
+    });
+    
+    // Relay change events to app logic
+    monacoEditor.onDidChangeModelContent(function() {
+        if (typeof window._onMonacoInput === 'function') {
+            window._onMonacoInput();
+        }
+    });
+});
+
+// ──────────────────────────────────────────────────────────────
+// PREMIUM MAGNIFIER GLASS & COLOR COORDINATE PICKER (HALLMARK STYLE)
+// ──────────────────────────────────────────────────────────────
+const magnifierGlass = document.getElementById('magnifier-glass');
+const magnifierCanvas = document.getElementById('magnifier-canvas');
+const pickerInfoBar = document.getElementById('picker-info-bar');
+const cacheCanvas = document.createElement('canvas');
+const cacheCtx = cacheCanvas.getContext('2d');
+let cacheUpdated = false;
+
+// Update cache canvas when image loads
+screenImageEl.addEventListener('load', function() {
+    cacheCanvas.width = screenImageEl.naturalWidth;
+    cacheCanvas.height = screenImageEl.naturalHeight;
+    cacheCtx.drawImage(screenImageEl, 0, 0);
+    cacheUpdated = true;
+});
+
+// Track toggle state changes to show/hide magnifier
+const _origTogglePicker = togglePicker;
+togglePicker = function() {
+    _origTogglePicker();
+    const active = pickerActive;
+    if (pickerInfoBar) pickerInfoBar.style.display = active ? 'flex' : 'none';
+    if (!active && magnifierGlass) magnifierGlass.style.display = 'none';
+};
+
+screenImageEl.addEventListener('mousemove', function(e) {
+    if (!pickerActive) return;
+    const rect = screenImageEl.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    const pctX = x / rect.width;
+    const pctY = y / rect.height;
+
+    // Scale to device resolution
+    const devX = Math.round(pctX * deviceResolution.w);
+    const devY = Math.round(pctY * deviceResolution.h);
+
+    // Show magnifier coordinates
+    document.getElementById('picker-coords').textContent = 'x: ' + devX + '  y: ' + devY;
+    document.getElementById('picker-code').textContent = 'tap(' + devX + ', ' + devY + ')';
+
+    if (cacheUpdated && magnifierGlass && magnifierCanvas) {
+        const pixelX = Math.floor(pctX * cacheCanvas.width);
+        const pixelY = Math.floor(pctY * cacheCanvas.height);
+        
+        try {
+            const pixel = cacheCtx.getImageData(pixelX, pixelY, 1, 1).data;
+            const r = pixel[0], g = pixel[1], b = pixel[2];
+            const hex = "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1).toUpperCase();
+
+            // Update swatch & values
+            document.getElementById('picker-color-swatch').style.backgroundColor = hex;
+            document.getElementById('picker-color-hex').textContent = hex;
+            document.getElementById('picker-color-rgb').textContent = '(RGB: ' + r + ', ' + g + ', ' + b + ')';
+
+            // Position and render magnifier glass
+            magnifierGlass.style.display = 'block';
+            magnifierGlass.style.left = (x - 65) + 'px';
+            magnifierGlass.style.top = (y - 145) + 'px';
+
+            const magCtx = magnifierCanvas.getContext('2d');
+            magCtx.clearRect(0, 0, 130, 130);
+            magCtx.imageSmoothingEnabled = false;
+
+            const srcSize = 11; // 11x11 pixel neighborhood
+            const srcX = pixelX - Math.floor(srcSize / 2);
+            const srcY = pixelY - Math.floor(srcSize / 2);
+
+            magCtx.drawImage(
+                cacheCanvas,
+                srcX, srcY, srcSize, srcSize,
+                0, 0, 130, 130
+            );
+
+            // Draw center pixel indicator
+            const centerPixelSize = 130 / srcSize;
+            magCtx.strokeStyle = 'rgba(255,255,255,0.7)';
+            magCtx.lineWidth = 1;
+            magCtx.strokeRect(65 - centerPixelSize / 2, 65 - centerPixelSize / 2, centerPixelSize, centerPixelSize);
+
+            // Crosshair
+            magCtx.strokeStyle = 'rgba(6,182,212,0.6)';
+            magCtx.lineWidth = 1;
+            magCtx.beginPath();
+            magCtx.moveTo(65, 0); magCtx.lineTo(65, 130);
+            magCtx.moveTo(0, 65); magCtx.lineTo(130, 65);
+            magCtx.stroke();
+
+        } catch (err) {
+            console.error('Failed to get pixel data:', err);
+        }
+    }
+});
+
+screenImageEl.addEventListener('mouseleave', function() {
+    if (magnifierGlass) magnifierGlass.style.display = 'none';
+});
