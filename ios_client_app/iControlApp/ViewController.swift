@@ -602,14 +602,10 @@ class ViewController: UIViewController {
                 self.wsStatusDot.backgroundColor = self.emerald
                 self.wsStatusLabel.text = "Đã kết nối"
                 self.wsStatusLabel.textColor = self.emerald
-                self.connectBtn.setTitle("⛔  NGẮT KẾT NỐI", for: .normal)
-                self.connectBtn.backgroundColor = self.red
             } else {
                 self.wsStatusDot.backgroundColor = self.red
                 self.wsStatusLabel.text = "Chưa kết nối"
                 self.wsStatusLabel.textColor = self.textMuted
-                self.connectBtn.setTitle("🔗  KẾT NỐI MÁY CHỦ", for: .normal)
-                self.connectBtn.backgroundColor = self.emerald
             }
         }
         startPulse(connected)
