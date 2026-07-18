@@ -6,7 +6,7 @@ include $(THEOS)/makefiles/common.mk
 
 APPLICATION_NAME = iControlApp
 
-iControlApp_FILES = iControlApp/AppDelegate.swift iControlApp/ViewController.swift iControlApp/FloatingWindow.swift iControlApp/TouchSimulator.swift iControlApp/WebSocketClient.swift
+iControlApp_FILES = iControlApp/AppDelegate.swift iControlApp/ViewController.swift iControlApp/FloatingWindow.swift iControlApp/TouchSimulator.swift iControlApp/WebSocketClient.swift iControlApp/LocalServer.swift iControlApp/WebAssets.swift
 iControlApp_FRAMEWORKS = UIKit CoreGraphics
 iControlApp_CODESIGN_FLAGS = -Sentitlements.plist
 

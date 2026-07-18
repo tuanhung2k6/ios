@@ -28,7 +28,9 @@ xcrun -sdk iphoneos swiftc \
     iControlApp/ViewController.swift \
     iControlApp/FloatingWindow.swift \
     iControlApp/TouchSimulator.swift \
-    iControlApp/WebSocketClient.swift
+    iControlApp/WebSocketClient.swift \
+    iControlApp/LocalServer.swift \
+    iControlApp/WebAssets.swift
 
 # 3. Copy Assets & Plist
 echo "[+] Copying assets and resources..."
