@@ -251,7 +251,7 @@ class WebSocketClient: NSObject {
     private var scriptContent: String = ""
     private var scriptNameCache: String = ""
     
-    private func runScript(content: String, name: String, loopCount: Int = 1, loopDelay: Double = 0.0) {
+    func runScript(content: String, name: String, loopCount: Int = 1, loopDelay: Double = 0.0) {
         print("[WebSocketClient] Running script: \(name) (loops=\(loopCount), delay=\(loopDelay)s)")
         self.scriptContent = content
         self.scriptNameCache = name

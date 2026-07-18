@@ -24,6 +24,10 @@ class ViewController: UIViewController {
     // HUD Card
     private let hudSwitch = UISwitch()
     
+    // Script Management Card
+    private let scriptCard = UIView()
+    private let scriptStack = UIStackView()
+    
     // Quick-Log area
     private let logCard = UIView()
     private let logTextView = UITextView()
@@ -120,11 +124,14 @@ class ViewController: UIViewController {
             content.widthAnchor.constraint(equalTo: scroll.widthAnchor)
         ])
         
+        ensureDefaultScript()
+        
         // Build cards inside content
         buildHeroSection(in: content)
         buildStatusCard(in: content)
         buildConnectionCard(in: content)
         buildHUDCard(in: content)
+        buildScriptCard(in: content)
         buildLogCard(in: content)
         buildVersionLabel(in: content)
         
@@ -670,6 +677,282 @@ class ViewController: UIViewController {
         UIView.animate(withDuration: 0.3) { toast.alpha = 1 }
         DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
             UIView.animate(withDuration: 0.3) { toast.alpha = 0 } completion: { _ in toast.removeFromSuperview() }
+        }
+    }
+    
+    // MARK: - Script Manager Card Layout (v5.2)
+    private func buildScriptCard(in parent: UIView) {
+        let prev = parent.subviews.last!
+        styleCard(scriptCard)
+        scriptCard.translatesAutoresizingMaskIntoConstraints = false
+        parent.addSubview(scriptCard)
+        
+        let titleL = cardSectionTitle("📁 QUẢN LÝ & CHẠY SCRIPT LUA")
+        scriptCard.addSubview(titleL)
+        
+        let addBtn = UIButton(type: .system)
+        addBtn.setTitle("➕ Tạo Script", for: .normal)
+        addBtn.setTitleColor(accent, for: .normal)
+        addBtn.titleLabel?.font = UIFont.systemFont(ofSize: 12, weight: .bold)
+        addBtn.addTarget(self, action: #selector(createScriptPressed), for: .touchUpInside)
+        addBtn.translatesAutoresizingMaskIntoConstraints = false
+        scriptCard.addSubview(addBtn)
+        
+        scriptStack.axis = .vertical
+        scriptStack.spacing = 8
+        scriptStack.translatesAutoresizingMaskIntoConstraints = false
+        scriptCard.addSubview(scriptStack)
+        
+        NSLayoutConstraint.activate([
+            scriptCard.topAnchor.constraint(equalTo: prev.bottomAnchor, constant: 12),
+            scriptCard.leadingAnchor.constraint(equalTo: parent.leadingAnchor, constant: 20),
+            scriptCard.trailingAnchor.constraint(equalTo: parent.trailingAnchor, constant: -20),
+            
+            titleL.topAnchor.constraint(equalTo: scriptCard.topAnchor, constant: 12),
+            titleL.leadingAnchor.constraint(equalTo: scriptCard.leadingAnchor, constant: 14),
+            
+            addBtn.trailingAnchor.constraint(equalTo: scriptCard.trailingAnchor, constant: -14),
+            addBtn.centerYAnchor.constraint(equalTo: titleL.centerYAnchor),
+            
+            scriptStack.topAnchor.constraint(equalTo: titleL.bottomAnchor, constant: 12),
+            scriptStack.leadingAnchor.constraint(equalTo: scriptCard.leadingAnchor, constant: 14),
+            scriptStack.trailingAnchor.constraint(equalTo: scriptCard.trailingAnchor, constant: -14),
+            scriptStack.bottomAnchor.constraint(equalTo: scriptCard.bottomAnchor, constant: -14)
+        ])
+        
+        loadAndRenderScripts()
+    }
+    
+    private func getDocumentsDirectory() -> URL {
+        FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+    }
+    
+    private func ensureDefaultScript() {
+        let file = getDocumentsDirectory().appendingPathComponent("main.lua")
+        if !FileManager.default.fileExists(atPath: file.path) {
+            let defaultContent = """
+            -- Kịch bản tự động hóa iOSControl LUA
+            log("Bắt đầu kịch bản mẫu")
+            sleep(1.0)
+            tap(187, 400)
+            sleep(1.5)
+            log("Hoàn thành!")
+            """
+            try? defaultContent.write(to: file, atomically: true, encoding: .utf8)
+        }
+    }
+    
+    private func loadAndRenderScripts() {
+        // Clear old list
+        for view in scriptStack.arrangedSubviews {
+            scriptStack.removeArrangedSubview(view)
+            view.removeFromSuperview()
+        }
+        
+        let docs = getDocumentsDirectory()
+        guard let files = try? FileManager.default.contentsOfDirectory(at: docs, includingPropertiesForKeys: nil) else { return }
+        let luaFiles = files.filter { $0.pathExtension == "lua" }.sorted(by: { $0.lastPathComponent < $1.lastPathComponent })
+        
+        for file in luaFiles {
+            let row = UIView()
+            row.backgroundColor = bgColor
+            row.layer.cornerRadius = 8
+            row.layer.borderWidth = 0.5
+            row.layer.borderColor = UIColor(white: 1, alpha: 0.1).cgColor
+            row.translatesAutoresizingMaskIntoConstraints = false
+            
+            let label = UILabel()
+            label.text = file.lastPathComponent
+            label.textColor = textPrimary
+            label.font = UIFont.systemFont(ofSize: 13, weight: .medium)
+            label.translatesAutoresizingMaskIntoConstraints = false
+            row.addSubview(label)
+            
+            // Edit Button
+            let editBtn = ScriptActionButton(type: .system)
+            editBtn.setTitle("✏️ Sửa", for: .normal)
+            editBtn.setTitleColor(.white, for: .normal)
+            editBtn.backgroundColor = accent
+            editBtn.titleLabel?.font = UIFont.systemFont(ofSize: 11, weight: .bold)
+            editBtn.layer.cornerRadius = 6
+            editBtn.fileURL = file
+            editBtn.addTarget(self, action: #selector(editScriptPressed(_:)), for: .touchUpInside)
+            editBtn.translatesAutoresizingMaskIntoConstraints = false
+            row.addSubview(editBtn)
+            
+            // Run Button
+            let runBtn = ScriptActionButton(type: .system)
+            runBtn.setTitle("▶ Chạy", for: .normal)
+            runBtn.setTitleColor(.white, for: .normal)
+            runBtn.backgroundColor = emerald
+            runBtn.titleLabel?.font = UIFont.systemFont(ofSize: 11, weight: .bold)
+            runBtn.layer.cornerRadius = 6
+            runBtn.fileURL = file
+            runBtn.addTarget(self, action: #selector(runScriptPressed(_:)), for: .touchUpInside)
+            runBtn.translatesAutoresizingMaskIntoConstraints = false
+            row.addSubview(runBtn)
+            
+            // Delete Button
+            let delBtn = ScriptActionButton(type: .system)
+            delBtn.setTitle("🗑️", for: .normal)
+            delBtn.setTitleColor(.white, for: .normal)
+            delBtn.backgroundColor = red
+            delBtn.titleLabel?.font = UIFont.systemFont(ofSize: 11, weight: .bold)
+            delBtn.layer.cornerRadius = 6
+            delBtn.fileURL = file
+            delBtn.addTarget(self, action: #selector(deleteScriptPressed(_:)), for: .touchUpInside)
+            delBtn.translatesAutoresizingMaskIntoConstraints = false
+            row.addSubview(delBtn)
+            
+            NSLayoutConstraint.activate([
+                row.heightAnchor.constraint(equalToConstant: 44),
+                
+                label.leadingAnchor.constraint(equalTo: row.leadingAnchor, constant: 10),
+                label.centerYAnchor.constraint(equalTo: row.centerYAnchor),
+                label.trailingAnchor.constraint(equalTo: editBtn.leadingAnchor, constant: -8),
+                
+                delBtn.trailingAnchor.constraint(equalTo: row.trailingAnchor, constant: -8),
+                delBtn.centerYAnchor.constraint(equalTo: row.centerYAnchor),
+                delBtn.widthAnchor.constraint(equalToConstant: 30),
+                delBtn.heightAnchor.constraint(equalToConstant: 28),
+                
+                runBtn.trailingAnchor.constraint(equalTo: delBtn.leadingAnchor, constant: -6),
+                runBtn.centerYAnchor.constraint(equalTo: row.centerYAnchor),
+                runBtn.widthAnchor.constraint(equalToConstant: 54),
+                runBtn.heightAnchor.constraint(equalToConstant: 28),
+                
+                editBtn.trailingAnchor.constraint(equalTo: runBtn.leadingAnchor, constant: -6),
+                editBtn.centerYAnchor.constraint(equalTo: row.centerYAnchor),
+                editBtn.widthAnchor.constraint(equalToConstant: 46),
+                editBtn.heightAnchor.constraint(equalToConstant: 28)
+            ])
+            
+            scriptStack.addArrangedSubview(row)
+        }
+    }
+    
+    @objc private func createScriptPressed() {
+        let alert = UIAlertController(title: "Script mới", message: "Nhập tên file script kịch bản:", preferredStyle: .alert)
+        alert.addTextField { tf in
+            tf.placeholder = "tên_kịch_bản.lua"
+        }
+        alert.addAction(UIAlertAction(title: "Hủy", style: .cancel))
+        alert.addAction(UIAlertAction(title: "Tạo", style: .default) { [weak self] _ in
+            guard let self = self,
+                  let name = alert.textFields?.first?.text?.trimmingCharacters(in: .whitespacesAndNewlines),
+                  !name.isEmpty else { return }
+            let safeName = name.hasSuffix(".lua") ? name : name + ".lua"
+            let file = self.getDocumentsDirectory().appendingPathComponent(safeName)
+            let initial = "-- " + safeName + "\nlog(\"Bắt đầu kịch bản\")\n"
+            try? initial.write(to: file, atomically: true, encoding: .utf8)
+            self.loadAndRenderScripts()
+            self.showToast("Đã tạo script: " + safeName)
+        })
+        present(alert, animated: true)
+    }
+    
+    @objc private func runScriptPressed(_ sender: ScriptActionButton) {
+        guard let file = sender.fileURL else { return }
+        do {
+            let content = try String(contentsOf: file, encoding: .utf8)
+            WebSocketClient.shared.runScript(content: content, name: file.lastPathComponent)
+            showToast("▶ Đang chạy: " + file.lastPathComponent)
+        } catch {
+            showToast("Lỗi đọc file kịch bản!")
+        }
+    }
+    
+    @objc private func editScriptPressed(_ sender: ScriptActionButton) {
+        guard let file = sender.fileURL else { return }
+        do {
+            let content = try String(contentsOf: file, encoding: .utf8)
+            let editVC = ScriptEditViewController(fileURL: file, initialContent: content) { [weak self] in
+                self?.loadAndRenderScripts()
+            }
+            let nav = UINavigationController(rootViewController: editVC)
+            present(nav, animated: true)
+        } catch {
+            showToast("Lỗi đọc file kịch bản!")
+        }
+    }
+    
+    @objc private func deleteScriptPressed(_ sender: ScriptActionButton) {
+        guard let file = sender.fileURL else { return }
+        let alert = UIAlertController(title: "Xóa script?", message: "Bạn có chắc chắn muốn xóa file \(file.lastPathComponent) không?", preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "Hủy", style: .cancel))
+        alert.addAction(UIAlertAction(title: "Xóa", style: .destructive) { [weak self] _ in
+            try? FileManager.default.removeItem(at: file)
+            self?.loadAndRenderScripts()
+            self?.showToast("Đã xóa file kịch bản.")
+        })
+        present(alert, animated: true)
+    }
+}
+
+// MARK: - Custom UI Component helpers (v5.2)
+class ScriptActionButton: UIButton {
+    var fileURL: URL?
+}
+
+// MARK: - Local Lua Editor View Controller (v5.2)
+class ScriptEditViewController: UIViewController {
+    let fileURL: URL
+    var onSave: (() -> Void)?
+    
+    private let textView = UITextView()
+    private let bgColor = UIColor(red: 8/255, green: 11/255, blue: 20/255, alpha: 1)
+    private let textColor = UIColor(red: 241/255, green: 245/255, blue: 249/255, alpha: 1)
+    
+    init(fileURL: URL, initialContent: String, onSave: (() -> Void)?) {
+        self.fileURL = fileURL
+        self.onSave = onSave
+        super.init(nibName: nil, bundle: nil)
+        self.textView.text = initialContent
+    }
+    
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+    
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        title = fileURL.lastPathComponent
+        view.backgroundColor = bgColor
+        
+        // Save & Cancel button
+        navigationItem.leftBarButtonItem = UIBarButtonItem(title: "Đóng", style: .plain, target: self, action: #selector(closePressed))
+        navigationItem.rightBarButtonItem = UIBarButtonItem(title: "Lưu", style: .done, target: self, action: #selector(savePressed))
+        
+        textView.backgroundColor = bgColor
+        textView.textColor = textColor
+        textView.font = UIFont.monospacedSystemFont(ofSize: 13, weight: .regular)
+        textView.keyboardDismissMode = .interactive
+        textView.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(textView)
+        
+        NSLayoutConstraint.activate([
+            textView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
+            textView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 10),
+            textView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -10),
+            textView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
+        ])
+        
+        textView.becomeFirstResponder()
+    }
+    
+    @objc private func closePressed() {
+        dismiss(animated: true)
+    }
+    
+    @objc private func savePressed() {
+        do {
+            try textView.text.write(to: fileURL, atomically: true, encoding: .utf8)
+            onSave?()
+            dismiss(animated: true)
+        } catch {
+            let alert = UIAlertController(title: "Lỗi", message: "Không thể lưu kịch bản!", preferredStyle: .alert)
+            alert.addAction(UIAlertAction(title: "OK", style: .default))
+            present(alert, animated: true)
         }
     }
 }
