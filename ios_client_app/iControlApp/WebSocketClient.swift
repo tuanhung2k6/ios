@@ -176,7 +176,7 @@ class WebSocketClient: NSObject {
         FloatingWindow.shared.setStatus(online: true)
         // Notify ViewController
         NotificationCenter.default.post(name: Notification.Name.wsConnected, object: nil)
-        FloatingWindow.shared.addLog("\u2705 Connected as \(name) [iOS \(iosVersion)] · \(ipAddress)")
+        FloatingWindow.shared.addLog("✅ Connected as \(name) [iOS \(iosVersion)] · \(ipAddress)")
     }
     
     // MARK: - Screenshot Capture & Send
