@@ -1,13 +1,10 @@
-import UIKit
+﻿import UIKit
+import Foundation
 
 // MARK: - Premium ViewController
 class ViewController: UIViewController {
     
     // ─── UI Layer Cards ───────────────────────────────────
-    private let cardContainer = UIView()
-    private let logoImageView = UIImageView()
-    private let logoLabel = UILabel()
-    private let subtitleLabel = UILabel()
     
     // Status Card
     private let statusCard = UIView()
@@ -25,9 +22,7 @@ class ViewController: UIViewController {
     private let autoConnectLabel = UILabel()
     
     // HUD Card
-    private let hudCard = UIView()
     private let hudSwitch = UISwitch()
-    private let hudLabel = UILabel()
     
     // Quick-Log area
     private let logCard = UIView()
@@ -61,9 +56,9 @@ class ViewController: UIViewController {
         startBatteryMonitor()
         
         // Observe WS events from WebSocketClient
-        NotificationCenter.default.addObserver(self, selector: #selector(onDeviceConnected), name: .wsConnected, object: nil)
-        NotificationCenter.default.addObserver(self, selector: #selector(onDeviceDisconnected), name: .wsDisconnected, object: nil)
-        NotificationCenter.default.addObserver(self, selector: #selector(onLogReceived(_:)), name: .wsLog, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(onDeviceConnected), name: Notification.Name.wsConnected, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(onDeviceDisconnected), name: Notification.Name.wsDisconnected, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(onLogReceived(_:)), name: Notification.Name.wsLog, object: nil)
         
         // Auto-connect if saved
         if UserDefaults.standard.bool(forKey: "iControl_auto_connect") {
@@ -197,7 +192,7 @@ class ViewController: UIViewController {
             subL.topAnchor.constraint(equalTo: titleL.bottomAnchor, constant: 4),
         ])
         
-        cardContainer.frame.origin.y = 130
+        
     }
     
     // MARK: - Status Card
@@ -477,7 +472,7 @@ class ViewController: UIViewController {
     }
     
     private func applyGradientToCard(_ card: UIView) {
-        if card.layer.sublayers?.contains(where: { $0 is CAGradientLayer }) == true { return }
+        if let sublayers = card.layer.sublayers, sublayers.contains(where: { $0 is CAGradientLayer }) { return }
         let grad = CAGradientLayer()
         grad.frame = card.bounds
         grad.cornerRadius = 16
