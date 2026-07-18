@@ -58,7 +58,8 @@ function connectWebSocket() {
 
     const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
     const host = location.host || 'localhost:9898';
-    ws = new WebSocket(`${protocol}//${host}`);
+    const passcode = encodeURIComponent(localStorage.getItem('auth_passcode') || '');
+    ws = new WebSocket(`${protocol}//${host}/?passcode=${passcode}`);
 
     ws.onopen = () => {
         wsReady = true;
@@ -2116,3 +2117,140 @@ if (screenImageEl) {
         }
     });
 }
+
+
+// ──────────────────────────────────────────────────────────────
+// v4.2 WORKSPACE & SECURITY SETTINGS IMPLEMENTATION
+// ──────────────────────────────────────────────────────────────
+let currentWorkspace = '';
+
+const selectWorkspace = document.getElementById('select-workspace');
+const btnCreateWorkspace = document.getElementById('btn-create-workspace');
+const btnDeleteWorkspace = document.getElementById('btn-delete-workspace');
+const inputPasscode = document.getElementById('input-passcode');
+const btnSavePasscode = document.getElementById('btn-save-passcode');
+
+// Load settings on init
+async function loadSecuritySettings() {
+    if (!inputPasscode) return;
+    try {
+        const res = await fetch('/api/security/status');
+        const data = await res.json();
+        if (data.success) {
+            const savedPass = localStorage.getItem('auth_passcode') || '';
+            inputPasscode.value = savedPass;
+        }
+    } catch(e) {}
+}
+
+if (btnSavePasscode) {
+    btnSavePasscode.addEventListener('click', async () => {
+        const pass = inputPasscode.value.trim();
+        try {
+            const res = await fetch('/api/security/passcode', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ passcode: pass })
+            });
+            const data = await res.json();
+            if (data.success) {
+                localStorage.setItem('auth_passcode', pass);
+                showToast('🛡️ Bảo mật', 'Đã cập nhật mật khẩu truy cập', 'success');
+                // Reconnect WebSocket to authenticate with new passcode
+                if (ws) ws.close();
+                setTimeout(connectWebSocket, 1000);
+            }
+        } catch(e) {
+            showToast('⚠️ Lỗi', 'Không thể kết nối lưu mật khẩu', 'error');
+        }
+    });
+}
+
+// Workspaces list
+async function loadWorkspaces() {
+    if (!selectWorkspace) return;
+    try {
+        const res = await fetch('/api/workspaces');
+        const data = await res.json();
+        if (data.success && data.workspaces) {
+            selectWorkspace.innerHTML = '<option value="">— Thư mục chính —</option>';
+            data.workspaces.forEach(wsName => {
+                selectWorkspace.innerHTML += `<option value="${wsName}" ${currentWorkspace === wsName ? 'selected' : ''}>📁 ${wsName}</option>`;
+            });
+        }
+    } catch(e) {}
+}
+
+if (selectWorkspace) {
+    selectWorkspace.addEventListener('change', (e) => {
+        currentWorkspace = e.target.value;
+        // Reload scripts for this workspace
+        loadScripts(currentWorkspace);
+        showToast('📁 Thư mục', 'Đã chuyển sang dự án: ' + (currentWorkspace || 'Thư mục chính'), 'info');
+    });
+}
+
+if (btnCreateWorkspace) {
+    btnCreateWorkspace.addEventListener('click', async () => {
+        const name = prompt('Nhập tên thư mục dự án mới (viết liền không dấu):');
+        if (!name) return;
+        try {
+            const res = await fetch('/api/workspaces/create', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name })
+            });
+            const data = await res.json();
+            if (data.success) {
+                currentWorkspace = data.name;
+                loadWorkspaces();
+                loadScripts(currentWorkspace);
+                showToast('📁 Dự án mới', 'Đã tạo thư mục: ' + currentWorkspace, 'success');
+            }
+        } catch(e) {}
+    });
+}
+
+if (btnDeleteWorkspace) {
+    btnDeleteWorkspace.addEventListener('click', async () => {
+        if (!currentWorkspace) {
+            showToast('⚠️ Lỗi', 'Vui lòng chọn dự án con để xóa', 'warn');
+            return;
+        }
+        if (!confirm('Bạn có chắc chắn muốn xóa dự án "' + currentWorkspace + '" cùng toàn bộ script bên trong?')) return;
+        try {
+            const res = await fetch('/api/workspaces/delete', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: currentWorkspace })
+            });
+            const data = await res.json();
+            if (data.success) {
+                showToast('🗑️ Đã xóa', 'Đã xóa dự án thành công', 'success');
+                currentWorkspace = '';
+                loadWorkspaces();
+                loadScripts();
+            }
+        } catch(e) {}
+    });
+}
+
+// Trigger in bootstrap
+loadSecuritySettings();
+loadWorkspaces();
+
+// Hook fetch options to send Passcode header automatically in all API requests
+const _origFetch = window.fetch;
+window.fetch = function(url, options) {
+    options = options || {};
+    options.headers = options.headers || {};
+    const pass = localStorage.getItem('auth_passcode');
+    if (pass) {
+        if (options.headers instanceof Headers) {
+            options.headers.set('Authorization', pass);
+        } else {
+            options.headers['Authorization'] = pass;
+        }
+    }
+    return _origFetch(url, options);
+};

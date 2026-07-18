@@ -5,6 +5,23 @@ const path = require('path');
 const fs = require('fs');
 const os = require('os');
 
+// ─── Passcode Security State & Middleware (v4.2) ───
+let serverPasscode = '';
+const PASSCODE_FILE = path.join(__dirname, 'data', 'passcode.txt');
+if (fs.existsSync(PASSCODE_FILE)) {
+  serverPasscode = fs.readFileSync(PASSCODE_FILE, 'utf8').trim();
+}
+
+function checkAuth(req, res, next) {
+  if (serverPasscode !== '') {
+    const token = req.headers['authorization'] || req.query.passcode || req.body.passcode;
+    if (token !== serverPasscode) {
+      return res.status(401).json({ success: false, error: 'Unauthorized: Invalid passcode' });
+    }
+  }
+  next();
+}
+
 // ─── Try loading optional dependencies ────────────────────────────────────────
 let qrcode;
 try { qrcode = require('qrcode-terminal'); } catch (_) {}
@@ -243,7 +260,7 @@ app.get('/api/git/status', (req, res) => {
   });
 });
 
-app.post('/api/git/commit', (req, res) => {
+app.post('/api/git/commit', checkAuth, (req, res) => {
   const { message } = req.body;
   if (!message) return res.status(400).json({ success: false, error: 'Commit message is required' });
   const safeMessage = message.replace(/"/g, '\\"');
@@ -254,6 +271,61 @@ app.post('/api/git/commit', (req, res) => {
     }
     res.json({ success: true, log: stdout + '\n' + stderr });
   });
+});
+
+// ─── REST API: Workspaces (v4.2) ─────────────────────────────────────────────────
+app.get('/api/workspaces', (req, res) => {
+  try {
+    const entries = fs.readdirSync(SCRIPTS_DIR, { withFileTypes: true });
+    const workspaces = entries
+      .filter(e => e.isDirectory() && e.name !== '.git')
+      .map(e => e.name);
+    res.json({ success: true, workspaces });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/workspaces/create', (req, res) => {
+  const { name } = req.body;
+  if (!name) return res.status(400).json({ success: false, error: 'Workspace name is required' });
+  const safeName = name.replace(/[^a-zA-Z0-9_\-]/g, '_');
+  const dir = path.join(SCRIPTS_DIR, safeName);
+  try {
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    res.json({ success: true, name: safeName });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/workspaces/delete', (req, res) => {
+  const { name } = req.body;
+  if (!name) return res.status(400).json({ success: false, error: 'Workspace name is required' });
+  const safeName = name.replace(/[^a-zA-Z0-9_\-]/g, '_');
+  const dir = path.join(SCRIPTS_DIR, safeName);
+  try {
+    if (fs.existsSync(dir)) {
+      fs.rmSync(dir, { recursive: true });
+      res.json({ success: true });
+    } else {
+      res.status(404).json({ success: false, error: 'Workspace not found' });
+    }
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ─── REST API: Security Settings (v4.2) ─────────────────────────────────────────
+app.get('/api/security/status', (req, res) => {
+  res.json({ success: true, passcodeEnabled: serverPasscode !== '' });
+});
+
+app.post('/api/security/passcode', (req, res) => {
+  const { passcode } = req.body;
+  serverPasscode = passcode ? passcode.trim() : '';
+  fs.writeFileSync(PASSCODE_FILE, serverPasscode, 'utf8');
+  res.json({ success: true, passcodeEnabled: serverPasscode !== '' });
 });
 
 // ─── REST API: Schedules ──────────────────────────────────────────────────────
@@ -326,6 +398,16 @@ function safeClose(ws, code = 1000, reason = '') {
 
 // ─── WebSocket Connection Handler ─────────────────────────────────────────────
 wss.on('connection', (ws, req) => {
+  if (serverPasscode !== '') {
+    const params = new URL(req.url || '', 'http://localhost').searchParams;
+    const passcode = params.get('passcode');
+    if (passcode !== serverPasscode) {
+      console.warn('[Server] WebSocket connection rejected: Invalid passcode.');
+      ws.close(4001, 'Unauthorized: Invalid passcode');
+      return;
+    }
+  }
+
   let connectionType = null;
   let deviceUdid = null;
   let scriptStartTime = null;
