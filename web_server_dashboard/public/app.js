@@ -1,4 +1,4 @@
-/* ═══════════════════════════════════════════════════════
+﻿/* ═══════════════════════════════════════════════════════
    iOSControl Pro — Frontend Application Logic v2.0
 ═══════════════════════════════════════════════════════ */
 
@@ -258,6 +258,7 @@ function openScreenTab(udid) {
 function openInfoTab(udid) {
     selectDevice(udid);
     activateTab('info');
+    if (typeof showDeviceDetail === 'function') showDeviceDetail(udid);
 }
 
 // ── Device Info Panel ──────────────────────────────────
@@ -1348,3 +1349,142 @@ updateLineNumbers();
 
 // First tab active = editor
 activateTab('editor');
+
+// --------------------------------------------------------------
+// TOAST NOTIFICATION SYSTEM
+// --------------------------------------------------------------
+
+const toastContainer = document.getElementById('toast-container');
+
+function showToast(title, msg, type, duration) {
+    if (!toastContainer) return;
+    if (duration === undefined) duration = 3500;
+    if (!type) type = 'info';
+    const icons = { success: '?', error: '?', info: '??', warn: '??', system: '??' };
+    const toast = document.createElement('div');
+    toast.className = 'toast ' + type;
+    toast.innerHTML = '<span class="toast-icon">' + (icons[type] || '??') + '</span><div class="toast-body"><div class="toast-title">' + title + '</div>' + (msg ? '<div class="toast-msg">' + msg + '</div>' : '') + '</div>';
+    toast.addEventListener('click', function() { toast.classList.add('leaving'); setTimeout(function() { toast.remove(); }, 260); });
+    toastContainer.appendChild(toast);
+    setTimeout(function() { toast.classList.add('leaving'); setTimeout(function() { toast.remove(); }, 260); }, duration);
+}
+
+// Toast for device events
+const _existingHandleMsg = handleServerMessage;
+function handleServerMessage(msg) {
+    if (msg.type === 'device_connected') { showToast('?? Thi?t b? k?t n?i', msg.device.name + ' � ' + msg.device.ip, 'success'); }
+    else if (msg.type === 'device_disconnected') { showToast('?? Thi?t b? ng?t', msg.device.name, 'warn'); }
+    else if (msg.type === 'schedule_fired') { showToast('? L?ch k�ch ho?t!', msg.name, 'info'); }
+    _existingHandleMsg(msg);
+}
+
+// --------------------------------------------------------------
+// SCRIPT TEMPLATES
+// --------------------------------------------------------------
+
+const TEMPLATES = {
+    tap_basic: '-- ?? Tap co b?n\ntap(195, 422)\nsleep(0.5)\ntap(195, 422)\n',
+    swipe_vertical: '-- ? Vu?t d?c (scroll down)\nswipe(195, 700, 195, 300, 0.4)\nsleep(0.8)\nswipe(195, 700, 195, 300, 0.4)\n',
+    loop_tap: '-- ?? L?p click t?i m?t di?m\ntap(195, 422)\nsleep(1.5)\n',
+    open_app: '-- ?? M? app theo Bundle ID\nappRun("com.apple.mobilesafari")\nsleep(2)\n',
+    snapchat_farm: '-- ?? SnapChat Streak Farm\nappRun("com.toyopagroup.picaboo")\nsleep(3)\ntap(195, 820)\nsleep(1)\ntap(195, 750)\nsleep(1.5)\ntap(340, 750)\nsleep(0.5)\ntap(195, 500)\nsleep(0.5)\ntap(340, 750)\nsleep(2)\nlog("Streak g?i th�nh c�ng!")\n',
+    scroll_feed: '-- ?? Vu?t Feed t? d?ng\nswipe(195, 700, 195, 200, 0.5)\nsleep(2)\nswipe(195, 700, 195, 200, 0.5)\nsleep(2)\nswipe(195, 700, 195, 200, 0.5)\nsleep(2)\nlog("Ho�n t?t cu?n feed.")\n',
+    screenshot_loop: '-- ?? Ch?p m�n h�nh v� ch?\nscreenshot()\nsleep(5)\nlog("Ch?p ?nh xong.")\n'
+};
+
+(function setupTemplates() {
+    var menu = document.getElementById('template-menu');
+    var btn = document.getElementById('btn-templates');
+    if (!btn || !menu) return;
+    btn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+    });
+    document.addEventListener('click', function() { if (menu) menu.style.display = 'none'; });
+    document.querySelectorAll('.template-item').forEach(function(item) {
+        item.addEventListener('click', function() {
+            var key = item.dataset.tpl;
+            var tpl = TEMPLATES[key];
+            if (tpl) {
+                var ta = document.getElementById('code-textarea');
+                var si = document.getElementById('script-name');
+                if (ta) ta.value = tpl;
+                if (si) si.value = key + '.lua';
+                currentScriptName = key + '.lua';
+                updateLineNumbers();
+                showToast('?? Template t?i xong', item.textContent.trim(), 'info');
+                activateTab('editor');
+            }
+            menu.style.display = 'none';
+        });
+    });
+})();
+
+// --------------------------------------------------------------
+// EXPORT LOGS
+// --------------------------------------------------------------
+
+var _exportLogs = [];
+var _baseLogFn = logToConsole;
+function logToConsole(level, msg, ts) {
+    _baseLogFn(level, msg, ts);
+    var time = ts || new Date().toLocaleTimeString('vi-VN');
+    _exportLogs.push('[' + time + '] [' + level.toUpperCase() + '] ' + msg);
+    if (_exportLogs.length > 5000) _exportLogs = _exportLogs.slice(-5000);
+}
+
+var exportBtn = document.getElementById('btn-export-logs');
+if (exportBtn) {
+    exportBtn.addEventListener('click', function() {
+        var content = _exportLogs.join('\n');
+        var blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = 'icontrol-logs-' + new Date().toISOString().slice(0,19).replace(/:/g,'-') + '.txt';
+        a.click();
+        URL.revokeObjectURL(url);
+        showToast('?? Xu?t logs xong', _exportLogs.length + ' d�ng', 'success');
+    });
+}
+
+// --------------------------------------------------------------
+// DEVICE DETAIL VIEW
+// --------------------------------------------------------------
+
+function showDeviceDetail(udid) {
+    var device = connectedDevices.find(function(d) { return d.udid === udid; });
+    var placeholder = document.getElementById('no-device-placeholder');
+    var detailView = document.getElementById('device-detail-view');
+    if (!device || !detailView) return;
+    if (placeholder) placeholder.style.display = 'none';
+    detailView.style.display = 'block';
+    function setText(id, val) { var el = document.getElementById(id); if (el) el.textContent = val || '�'; }
+    setText('detail-name', device.name);
+    setText('detail-model', device.model || 'iPhone');
+    setText('detail-ip', device.ip);
+    var bat = device.battery;
+    setText('detail-battery', bat !== null && bat !== undefined ? bat + '% ' + (bat < 20 ? '??' : bat < 50 ? '??' : '??') : '�');
+    setText('detail-udid', device.udid);
+    setText('detail-status', device.status === 'running' ? '? Ch?y script' : device.status === 'online' ? '? Online' : '? Offline');
+    setText('detail-connected-at', device.connectedAt ? new Date(device.connectedAt).toLocaleString('vi-VN') : '�');
+    setText('detail-last-seen', device.lastSeen ? new Date(device.lastSeen).toLocaleString('vi-VN') : '�');
+    var iosBadge = document.getElementById('detail-ios');
+    if (iosBadge) iosBadge.textContent = 'iOS ' + (device.ios_version || '?');
+    var statusBadge = document.getElementById('detail-status-badge');
+    if (statusBadge) { statusBadge.textContent = device.status === 'running' ? 'Running' : device.status === 'online' ? 'Online' : 'Offline'; statusBadge.className = 'detail-badge status ' + device.status; }
+    var runBtn2 = document.getElementById('detail-btn-run');
+    var ssBtn = document.getElementById('detail-btn-screenshot');
+    var stopBtn2 = document.getElementById('detail-btn-stop');
+    if (runBtn2) runBtn2.onclick = function() {
+        var content = document.getElementById('code-textarea').value.trim();
+        if (!content) { showToast('?? Editor tr?ng', 'Nh?p script tru?c', 'warn'); return; }
+        sendWs({ action: 'run_script', targetUdid: udid, script: content, scriptName: document.getElementById('script-name').value.trim() });
+        showToast('? �ang ch?y', 'Tr�n: ' + device.name, 'info');
+    };
+    if (ssBtn) ssBtn.onclick = function() { sendWs({ action: 'request_screenshot', targetUdid: udid }); activateTab('screen'); };
+    if (stopBtn2) stopBtn2.onclick = function() { sendWs({ action: 'stop_script', targetUdid: udid }); showToast('? D?ng script', device.name, 'warn'); };
+}
+
+// Welcome toast
+setTimeout(function() { showToast('?? iOSControl Pro v3.0', 'Server s?n s�ng. Ch? thi?t b? k?t n?i...', 'system', 5000); }, 800);

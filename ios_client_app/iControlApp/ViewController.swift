@@ -1,132 +1,694 @@
 import UIKit
 
+// MARK: - Premium ViewController
 class ViewController: UIViewController {
-
-    // UI Elements
-    private let titleLabel = UILabel()
-    private let ipLabel = UILabel()
-    private let ipTextField = UITextField()
-    private let portLabel = UILabel()
-    private let portTextField = UITextField()
-    private let connectButton = UIButton(type: .system)
-    private let hudLabel = UILabel()
-    private let hudSwitch = UISwitch()
     
+    // ─── UI Layer Cards ───────────────────────────────────
+    private let cardContainer = UIView()
+    private let logoImageView = UIImageView()
+    private let logoLabel = UILabel()
+    private let subtitleLabel = UILabel()
+    
+    // Status Card
+    private let statusCard = UIView()
+    private let wsStatusDot = UIView()
+    private let wsStatusLabel = UILabel()
+    private let batteryLabel = UILabel()
+    private let timeLabel = UILabel()
+    
+    // Connection Card
+    private let connCard = UIView()
+    private let ipField = PaddedTextField()
+    private let portField = PaddedTextField()
+    private let connectBtn = UIButton(type: .system)
+    private let autoConnectSwitch = UISwitch()
+    private let autoConnectLabel = UILabel()
+    
+    // HUD Card
+    private let hudCard = UIView()
+    private let hudSwitch = UISwitch()
+    private let hudLabel = UILabel()
+    
+    // Quick-Log area
+    private let logCard = UIView()
+    private let logTextView = UITextView()
+    
+    // Version badge
+    private let versionLabel = UILabel()
+    
+    // State
     private var isConnected = false
+    private var clockTimer: Timer?
+    private var batteryTimer: Timer?
+    private var pulseTimer: Timer?
+
+    // Colors
+    private let bgColor = UIColor(red: 8/255, green: 11/255, blue: 20/255, alpha: 1)
+    private let surfaceColor = UIColor(red: 13/255, green: 18/255, blue: 32/255, alpha: 1)
+    private let cardColor = UIColor(red: 18/255, green: 24/255, blue: 42/255, alpha: 1)
+    private let accent = UIColor(red: 99/255, green: 102/255, blue: 241/255, alpha: 1)
+    private let emerald = UIColor(red: 16/255, green: 185/255, blue: 129/255, alpha: 1)
+    private let red = UIColor(red: 239/255, green: 68/255, blue: 68/255, alpha: 1)
+    private let textPrimary = UIColor(red: 241/255, green: 245/255, blue: 249/255, alpha: 1)
+    private let textMuted = UIColor(red: 100/255, green: 116/255, blue: 139/255, alpha: 1)
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        setupBackground()
-        setupUI()
+        setupNavBar()
+        setupScrollView()
         loadSavedSettings()
+        startClock()
+        startBatteryMonitor()
+        
+        // Observe WS events from WebSocketClient
+        NotificationCenter.default.addObserver(self, selector: #selector(onDeviceConnected), name: .wsConnected, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(onDeviceDisconnected), name: .wsDisconnected, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(onLogReceived(_:)), name: .wsLog, object: nil)
+        
+        // Auto-connect if saved
+        if UserDefaults.standard.bool(forKey: "iControl_auto_connect") {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { self.attemptConnect() }
+        }
     }
     
-    private func setupBackground() {
-        self.title = "iControl iOS Agent"
-        self.view.backgroundColor = UIColor(red: 11/255, green: 15/255, blue: 25/255, alpha: 1.0)
-        self.navigationController?.navigationBar.barTintColor = UIColor(red: 14/255, green: 20/255, blue: 36/255, alpha: 1.0)
-        self.navigationController?.navigationBar.titleTextAttributes = [.foregroundColor: UIColor.white]
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        applyGradientToCard(statusCard)
     }
     
-    private func setupUI() {
-        // App Title
-        titleLabel.text = "IOS CONTROL SYSTEM"
-        titleLabel.font = UIFont.systemFont(ofSize: 22, weight: .bold)
-        titleLabel.textColor = UIColor(red: 99/255, green: 102/255, blue: 241/255, alpha: 1.0) // Indigo
-        titleLabel.textAlignment = .center
-        titleLabel.frame = CGRect(x: 20, y: 120, width: self.view.frame.width - 40, height: 30)
-        self.view.addSubview(titleLabel)
+    deinit {
+        clockTimer?.invalidate()
+        batteryTimer?.invalidate()
+        NotificationCenter.default.removeObserver(self)
+    }
+
+    // MARK: - Navigation Bar
+    private func setupNavBar() {
+        let appearance = UINavigationBarAppearance()
+        appearance.configureWithOpaqueBackground()
+        appearance.backgroundColor = surfaceColor
+        appearance.titleTextAttributes = [.foregroundColor: textPrimary, .font: UIFont.systemFont(ofSize: 16, weight: .semibold)]
+        navigationController?.navigationBar.standardAppearance = appearance
+        navigationController?.navigationBar.scrollEdgeAppearance = appearance
+        navigationController?.navigationBar.tintColor = accent
+        title = "iOSControl"
+
+        // Right button = QR Scan (placeholder)
+        let infoBtn = UIBarButtonItem(image: UIImage(systemName: "info.circle"), style: .plain, target: self, action: #selector(showAbout))
+        navigationItem.rightBarButtonItem = infoBtn
+    }
+
+    // MARK: - Layout via ScrollView
+    private func setupScrollView() {
+        view.backgroundColor = bgColor
         
-        // IP Input Field
-        ipLabel.text = "Địa chỉ IP Máy Chủ (Server IP)"
-        ipLabel.textColor = .lightGray
-        ipLabel.font = UIFont.systemFont(ofSize: 14, weight: .medium)
-        ipLabel.frame = CGRect(x: 30, y: 180, width: self.view.frame.width - 60, height: 20)
-        self.view.addSubview(ipLabel)
+        let scroll = UIScrollView()
+        scroll.translatesAutoresizingMaskIntoConstraints = false
+        scroll.showsVerticalScrollIndicator = false
+        view.addSubview(scroll)
         
-        ipTextField.placeholder = "192.168.1.100"
-        ipTextField.backgroundColor = UIColor(red: 20/255, green: 26/255, blue: 42/255, alpha: 1.0)
-        ipTextField.textColor = .white
-        ipTextField.borderStyle = .roundedRect
-        ipTextField.keyboardType = .decimalPad
-        ipTextField.frame = CGRect(x: 30, y: 205, width: self.view.frame.width - 60, height: 40)
-        self.view.addSubview(ipTextField)
+        NSLayoutConstraint.activate([
+            scroll.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
+            scroll.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            scroll.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            scroll.bottomAnchor.constraint(equalTo: view.bottomAnchor)
+        ])
         
-        // Port Input Field
-        portLabel.text = "Cổng kết nối (Port)"
-        portLabel.textColor = .lightGray
-        portLabel.font = UIFont.systemFont(ofSize: 14, weight: .medium)
-        portLabel.frame = CGRect(x: 30, y: 260, width: self.view.frame.width - 60, height: 20)
-        self.view.addSubview(portLabel)
+        let content = UIView()
+        content.translatesAutoresizingMaskIntoConstraints = false
+        scroll.addSubview(content)
+        NSLayoutConstraint.activate([
+            content.topAnchor.constraint(equalTo: scroll.topAnchor),
+            content.leadingAnchor.constraint(equalTo: scroll.leadingAnchor),
+            content.trailingAnchor.constraint(equalTo: scroll.trailingAnchor),
+            content.bottomAnchor.constraint(equalTo: scroll.bottomAnchor),
+            content.widthAnchor.constraint(equalTo: scroll.widthAnchor)
+        ])
         
-        portTextField.placeholder = "9898"
-        portTextField.backgroundColor = UIColor(red: 20/255, green: 26/255, blue: 42/255, alpha: 1.0)
-        portTextField.textColor = .white
-        portTextField.borderStyle = .roundedRect
-        portTextField.keyboardType = .numberPad
-        portTextField.frame = CGRect(x: 30, y: 285, width: self.view.frame.width - 60, height: 40)
-        self.view.addSubview(portTextField)
+        // Build cards inside content
+        buildHeroSection(in: content)
+        buildStatusCard(in: content)
+        buildConnectionCard(in: content)
+        buildHUDCard(in: content)
+        buildLogCard(in: content)
+        buildVersionLabel(in: content)
         
-        // HUD Overlay Toggle Switch
-        hudLabel.text = "Hiển thị thông báo nổi (Floating Overlay HUD)"
-        hudLabel.textColor = .lightGray
-        hudLabel.font = UIFont.systemFont(ofSize: 14, weight: .medium)
-        hudLabel.frame = CGRect(x: 30, y: 350, width: self.view.frame.width - 120, height: 20)
-        self.view.addSubview(hudLabel)
+        // Dismiss keyboard on tap
+        let tap = UITapGestureRecognizer(target: view, action: #selector(UIView.endEditing(_:)))
+        tap.cancelsTouchesInView = false
+        view.addGestureRecognizer(tap)
+    }
+    
+    // MARK: - Hero Section
+    private func buildHeroSection(in parent: UIView) {
+        let container = UIView()
+        container.translatesAutoresizingMaskIntoConstraints = false
+        parent.addSubview(container)
+        NSLayoutConstraint.activate([
+            container.topAnchor.constraint(equalTo: parent.topAnchor, constant: 24),
+            container.leadingAnchor.constraint(equalTo: parent.leadingAnchor, constant: 20),
+            container.trailingAnchor.constraint(equalTo: parent.trailingAnchor, constant: -20),
+            container.heightAnchor.constraint(equalToConstant: 80)
+        ])
         
-        hudSwitch.onTintColor = UIColor(red: 99/255, green: 102/255, blue: 241/255, alpha: 1.0)
-        hudSwitch.isOn = false
-        hudSwitch.addTarget(self, action: #selector(hudSwitchChanged), for: .valueChanged)
-        hudSwitch.frame = CGRect(x: self.view.frame.width - 80, y: 345, width: 50, height: 30)
-        self.view.addSubview(hudSwitch)
+        // Icon
+        let iconBg = UIView()
+        iconBg.backgroundColor = UIColor(red: 99/255, green: 102/255, blue: 241/255, alpha: 0.15)
+        iconBg.layer.cornerRadius = 16
+        iconBg.translatesAutoresizingMaskIntoConstraints = false
+        container.addSubview(iconBg)
+        
+        let icon = UIImageView(image: UIImage(systemName: "network"))
+        icon.tintColor = accent
+        icon.contentMode = .scaleAspectFit
+        icon.translatesAutoresizingMaskIntoConstraints = false
+        iconBg.addSubview(icon)
+        
+        let titleL = UILabel()
+        titleL.text = "iOSControl Pro"
+        titleL.font = UIFont.systemFont(ofSize: 24, weight: .bold)
+        titleL.textColor = textPrimary
+        titleL.translatesAutoresizingMaskIntoConstraints = false
+        container.addSubview(titleL)
+        
+        let subL = UILabel()
+        subL.text = "Remote Script Automation Agent"
+        subL.font = UIFont.systemFont(ofSize: 12, weight: .medium)
+        subL.textColor = textMuted
+        subL.translatesAutoresizingMaskIntoConstraints = false
+        container.addSubview(subL)
+        
+        NSLayoutConstraint.activate([
+            iconBg.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            iconBg.centerYAnchor.constraint(equalTo: container.centerYAnchor),
+            iconBg.widthAnchor.constraint(equalToConstant: 56),
+            iconBg.heightAnchor.constraint(equalToConstant: 56),
+            
+            icon.centerXAnchor.constraint(equalTo: iconBg.centerXAnchor),
+            icon.centerYAnchor.constraint(equalTo: iconBg.centerYAnchor),
+            icon.widthAnchor.constraint(equalToConstant: 28),
+            icon.heightAnchor.constraint(equalToConstant: 28),
+            
+            titleL.leadingAnchor.constraint(equalTo: iconBg.trailingAnchor, constant: 14),
+            titleL.topAnchor.constraint(equalTo: iconBg.topAnchor, constant: 6),
+            titleL.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            
+            subL.leadingAnchor.constraint(equalTo: titleL.leadingAnchor),
+            subL.topAnchor.constraint(equalTo: titleL.bottomAnchor, constant: 4),
+        ])
+        
+        cardContainer.frame.origin.y = 130
+    }
+    
+    // MARK: - Status Card
+    private func buildStatusCard(in parent: UIView) {
+        let prev = parent.subviews.last!
+        styleCard(statusCard)
+        statusCard.translatesAutoresizingMaskIntoConstraints = false
+        parent.addSubview(statusCard)
+        NSLayoutConstraint.activate([
+            statusCard.topAnchor.constraint(equalTo: prev.bottomAnchor, constant: 16),
+            statusCard.leadingAnchor.constraint(equalTo: parent.leadingAnchor, constant: 20),
+            statusCard.trailingAnchor.constraint(equalTo: parent.trailingAnchor, constant: -20),
+            statusCard.heightAnchor.constraint(equalToConstant: 70)
+        ])
+        
+        let titleL = cardSectionTitle("📡 Trạng Thái Kết Nối")
+        statusCard.addSubview(titleL)
+        
+        wsStatusDot.backgroundColor = red
+        wsStatusDot.layer.cornerRadius = 5
+        wsStatusDot.translatesAutoresizingMaskIntoConstraints = false
+        statusCard.addSubview(wsStatusDot)
+        
+        wsStatusLabel.text = "Chưa kết nối"
+        wsStatusLabel.font = UIFont.systemFont(ofSize: 13, weight: .medium)
+        wsStatusLabel.textColor = textMuted
+        wsStatusLabel.translatesAutoresizingMaskIntoConstraints = false
+        statusCard.addSubview(wsStatusLabel)
+        
+        batteryLabel.font = UIFont.systemFont(ofSize: 12, weight: .regular)
+        batteryLabel.textColor = textMuted
+        batteryLabel.translatesAutoresizingMaskIntoConstraints = false
+        statusCard.addSubview(batteryLabel)
+        
+        timeLabel.font = UIFont.monospacedSystemFont(ofSize: 12, weight: .regular)
+        timeLabel.textColor = accent
+        timeLabel.textAlignment = .right
+        timeLabel.translatesAutoresizingMaskIntoConstraints = false
+        statusCard.addSubview(timeLabel)
+        
+        NSLayoutConstraint.activate([
+            titleL.topAnchor.constraint(equalTo: statusCard.topAnchor, constant: 12),
+            titleL.leadingAnchor.constraint(equalTo: statusCard.leadingAnchor, constant: 14),
+            
+            wsStatusDot.leadingAnchor.constraint(equalTo: statusCard.leadingAnchor, constant: 14),
+            wsStatusDot.bottomAnchor.constraint(equalTo: statusCard.bottomAnchor, constant: -14),
+            wsStatusDot.widthAnchor.constraint(equalToConstant: 10),
+            wsStatusDot.heightAnchor.constraint(equalToConstant: 10),
+            
+            wsStatusLabel.leadingAnchor.constraint(equalTo: wsStatusDot.trailingAnchor, constant: 8),
+            wsStatusLabel.centerYAnchor.constraint(equalTo: wsStatusDot.centerYAnchor),
+            
+            batteryLabel.leadingAnchor.constraint(equalTo: wsStatusLabel.trailingAnchor, constant: 12),
+            batteryLabel.centerYAnchor.constraint(equalTo: wsStatusDot.centerYAnchor),
+            
+            timeLabel.trailingAnchor.constraint(equalTo: statusCard.trailingAnchor, constant: -14),
+            timeLabel.centerYAnchor.constraint(equalTo: wsStatusDot.centerYAnchor),
+        ])
+    }
+    
+    // MARK: - Connection Card
+    private func buildConnectionCard(in parent: UIView) {
+        let prev = parent.subviews.last!
+        styleCard(connCard)
+        connCard.translatesAutoresizingMaskIntoConstraints = false
+        parent.addSubview(connCard)
+        NSLayoutConstraint.activate([
+            connCard.topAnchor.constraint(equalTo: prev.bottomAnchor, constant: 12),
+            connCard.leadingAnchor.constraint(equalTo: parent.leadingAnchor, constant: 20),
+            connCard.trailingAnchor.constraint(equalTo: parent.trailingAnchor, constant: -20),
+            connCard.heightAnchor.constraint(equalToConstant: 220)
+        ])
+        
+        let titleL = cardSectionTitle("🌐 Máy Chủ Dashboard")
+        connCard.addSubview(titleL)
+        
+        styleField(ipField, placeholder: "192.168.1.100", icon: "wifi")
+        styleField(portField, placeholder: "9898", icon: "number")
+        portField.keyboardType = .numberPad
+        portField.text = "9898"
+        
+        connCard.addSubview(ipField)
+        connCard.addSubview(portField)
+        
+        // Auto connect row
+        autoConnectLabel.text = "Tự kết nối khi mở app"
+        autoConnectLabel.font = UIFont.systemFont(ofSize: 13, weight: .medium)
+        autoConnectLabel.textColor = textMuted
+        autoConnectLabel.translatesAutoresizingMaskIntoConstraints = false
+        connCard.addSubview(autoConnectLabel)
+        
+        autoConnectSwitch.onTintColor = accent
+        autoConnectSwitch.isOn = UserDefaults.standard.bool(forKey: "iControl_auto_connect")
+        autoConnectSwitch.addTarget(self, action: #selector(autoConnectChanged), for: .valueChanged)
+        autoConnectSwitch.translatesAutoresizingMaskIntoConstraints = false
+        connCard.addSubview(autoConnectSwitch)
         
         // Connect Button
-        connectButton.setTitle("KẾT NỐI MÁY CHỦ", for: .normal)
-        connectButton.backgroundColor = UIColor(red: 16/255, green: 185/255, blue: 129/255, alpha: 1.0) // Emerald
-        connectButton.setTitleColor(.white, for: .normal)
-        connectButton.titleLabel?.font = UIFont.systemFont(ofSize: 16, weight: .bold)
-        connectButton.layer.cornerRadius = 8
-        connectButton.addTarget(self, action: #selector(connectButtonPressed), for: .touchUpInside)
-        connectButton.frame = CGRect(x: 30, y: 410, width: self.view.frame.width - 60, height: 48)
-        self.view.addSubview(connectButton)
+        connectBtn.translatesAutoresizingMaskIntoConstraints = false
+        connectBtn.setTitle("🔗  KẾT NỐI MÁY CHỦ", for: .normal)
+        connectBtn.backgroundColor = emerald
+        connectBtn.setTitleColor(.white, for: .normal)
+        connectBtn.titleLabel?.font = UIFont.systemFont(ofSize: 15, weight: .bold)
+        connectBtn.layer.cornerRadius = 12
+        connectBtn.addTarget(self, action: #selector(connectPressed), for: .touchUpInside)
+        connCard.addSubview(connectBtn)
+        
+        NSLayoutConstraint.activate([
+            titleL.topAnchor.constraint(equalTo: connCard.topAnchor, constant: 14),
+            titleL.leadingAnchor.constraint(equalTo: connCard.leadingAnchor, constant: 14),
+            
+            ipField.topAnchor.constraint(equalTo: titleL.bottomAnchor, constant: 12),
+            ipField.leadingAnchor.constraint(equalTo: connCard.leadingAnchor, constant: 14),
+            ipField.trailingAnchor.constraint(equalTo: connCard.trailingAnchor, constant: -14),
+            ipField.heightAnchor.constraint(equalToConstant: 42),
+            
+            portField.topAnchor.constraint(equalTo: ipField.bottomAnchor, constant: 8),
+            portField.leadingAnchor.constraint(equalTo: connCard.leadingAnchor, constant: 14),
+            portField.widthAnchor.constraint(equalToConstant: 120),
+            portField.heightAnchor.constraint(equalToConstant: 42),
+            
+            autoConnectLabel.leadingAnchor.constraint(equalTo: portField.trailingAnchor, constant: 16),
+            autoConnectLabel.centerYAnchor.constraint(equalTo: portField.centerYAnchor),
+            
+            autoConnectSwitch.trailingAnchor.constraint(equalTo: connCard.trailingAnchor, constant: -14),
+            autoConnectSwitch.centerYAnchor.constraint(equalTo: portField.centerYAnchor),
+            
+            connectBtn.topAnchor.constraint(equalTo: portField.bottomAnchor, constant: 14),
+            connectBtn.leadingAnchor.constraint(equalTo: connCard.leadingAnchor, constant: 14),
+            connectBtn.trailingAnchor.constraint(equalTo: connCard.trailingAnchor, constant: -14),
+            connectBtn.heightAnchor.constraint(equalToConstant: 48),
+        ])
     }
     
+    // MARK: - HUD Card
+    private func buildHUDCard(in parent: UIView) {
+        let prev = parent.subviews.last!
+        let card = UIView()
+        styleCard(card)
+        card.translatesAutoresizingMaskIntoConstraints = false
+        parent.addSubview(card)
+        NSLayoutConstraint.activate([
+            card.topAnchor.constraint(equalTo: prev.bottomAnchor, constant: 12),
+            card.leadingAnchor.constraint(equalTo: parent.leadingAnchor, constant: 20),
+            card.trailingAnchor.constraint(equalTo: parent.trailingAnchor, constant: -20),
+            card.heightAnchor.constraint(equalToConstant: 68)
+        ])
+        
+        let titleL = cardSectionTitle("👁 Overlay HUD")
+        card.addSubview(titleL)
+        
+        let sub = UILabel()
+        sub.text = "Hiển thị log nổi trên màn hình"
+        sub.font = UIFont.systemFont(ofSize: 12)
+        sub.textColor = textMuted
+        sub.translatesAutoresizingMaskIntoConstraints = false
+        card.addSubview(sub)
+        
+        hudSwitch.onTintColor = accent
+        hudSwitch.isOn = false
+        hudSwitch.addTarget(self, action: #selector(hudChanged), for: .valueChanged)
+        hudSwitch.translatesAutoresizingMaskIntoConstraints = false
+        card.addSubview(hudSwitch)
+        
+        NSLayoutConstraint.activate([
+            titleL.topAnchor.constraint(equalTo: card.topAnchor, constant: 12),
+            titleL.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 14),
+            
+            sub.topAnchor.constraint(equalTo: titleL.bottomAnchor, constant: 2),
+            sub.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 14),
+            
+            hudSwitch.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -14),
+            hudSwitch.centerYAnchor.constraint(equalTo: card.centerYAnchor),
+        ])
+    }
+    
+    // MARK: - Log Card
+    private func buildLogCard(in parent: UIView) {
+        let prev = parent.subviews.last!
+        let card = UIView()
+        styleCard(card)
+        card.translatesAutoresizingMaskIntoConstraints = false
+        parent.addSubview(card)
+        NSLayoutConstraint.activate([
+            card.topAnchor.constraint(equalTo: prev.bottomAnchor, constant: 12),
+            card.leadingAnchor.constraint(equalTo: parent.leadingAnchor, constant: 20),
+            card.trailingAnchor.constraint(equalTo: parent.trailingAnchor, constant: -20),
+            card.heightAnchor.constraint(equalToConstant: 160)
+        ])
+        
+        let titleL = cardSectionTitle("📋 Activity Log")
+        card.addSubview(titleL)
+        
+        let clearBtn = UIButton(type: .system)
+        clearBtn.setTitle("Xóa", for: .normal)
+        clearBtn.setTitleColor(textMuted, for: .normal)
+        clearBtn.titleLabel?.font = UIFont.systemFont(ofSize: 12)
+        clearBtn.addTarget(self, action: #selector(clearLog), for: .touchUpInside)
+        clearBtn.translatesAutoresizingMaskIntoConstraints = false
+        card.addSubview(clearBtn)
+        
+        logTextView.backgroundColor = UIColor(red: 8/255, green: 11/255, blue: 20/255, alpha: 1)
+        logTextView.textColor = UIColor(red: 100/255, green: 200/255, blue: 150/255, alpha: 1)
+        logTextView.font = UIFont.monospacedSystemFont(ofSize: 10, weight: .regular)
+        logTextView.isEditable = false
+        logTextView.layer.cornerRadius = 8
+        logTextView.text = "── Agent Ready ──"
+        logTextView.translatesAutoresizingMaskIntoConstraints = false
+        card.addSubview(logTextView)
+        
+        NSLayoutConstraint.activate([
+            titleL.topAnchor.constraint(equalTo: card.topAnchor, constant: 12),
+            titleL.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 14),
+            
+            clearBtn.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -14),
+            clearBtn.centerYAnchor.constraint(equalTo: titleL.centerYAnchor),
+            
+            logTextView.topAnchor.constraint(equalTo: titleL.bottomAnchor, constant: 8),
+            logTextView.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 10),
+            logTextView.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -10),
+            logTextView.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -10),
+        ])
+    }
+    
+    private func buildVersionLabel(in parent: UIView) {
+        let prev = parent.subviews.last!
+        let label = UILabel()
+        label.text = "iOSControl Pro v3.0 • Powered by iControl Engine"
+        label.font = UIFont.systemFont(ofSize: 10)
+        label.textColor = textMuted
+        label.textAlignment = .center
+        label.translatesAutoresizingMaskIntoConstraints = false
+        parent.addSubview(label)
+        NSLayoutConstraint.activate([
+            label.topAnchor.constraint(equalTo: prev.bottomAnchor, constant: 16),
+            label.centerXAnchor.constraint(equalTo: parent.centerXAnchor),
+            label.bottomAnchor.constraint(equalTo: parent.bottomAnchor, constant: -24)
+        ])
+    }
+    
+    // MARK: - Helpers
+    private func styleCard(_ card: UIView) {
+        card.backgroundColor = cardColor
+        card.layer.cornerRadius = 16
+        card.layer.borderWidth = 1
+        card.layer.borderColor = UIColor(white: 1, alpha: 0.05).cgColor
+        card.layer.shadowColor = UIColor.black.cgColor
+        card.layer.shadowOffset = CGSize(width: 0, height: 4)
+        card.layer.shadowRadius = 12
+        card.layer.shadowOpacity = 0.3
+    }
+    
+    private func cardSectionTitle(_ text: String) -> UILabel {
+        let l = UILabel()
+        l.text = text
+        l.font = UIFont.systemFont(ofSize: 12, weight: .semibold)
+        l.textColor = textMuted
+        l.translatesAutoresizingMaskIntoConstraints = false
+        return l
+    }
+    
+    private func styleField(_ field: PaddedTextField, placeholder: String, icon: String) {
+        field.placeholder = placeholder
+        field.attributedPlaceholder = NSAttributedString(string: placeholder, attributes: [.foregroundColor: textMuted])
+        field.backgroundColor = UIColor(red: 8/255, green: 11/255, blue: 20/255, alpha: 1)
+        field.textColor = textPrimary
+        field.font = UIFont.monospacedSystemFont(ofSize: 14, weight: .regular)
+        field.layer.cornerRadius = 10
+        field.layer.borderWidth = 1
+        field.layer.borderColor = UIColor(white: 1, alpha: 0.07).cgColor
+        field.leftPadding = 12
+        field.translatesAutoresizingMaskIntoConstraints = false
+        
+        // Edit focus
+        field.addTarget(self, action: #selector(fieldFocused(_:)), for: .editingDidBegin)
+        field.addTarget(self, action: #selector(fieldBlurred(_:)), for: .editingDidEnd)
+    }
+    
+    private func applyGradientToCard(_ card: UIView) {
+        if card.layer.sublayers?.contains(where: { $0 is CAGradientLayer }) == true { return }
+        let grad = CAGradientLayer()
+        grad.frame = card.bounds
+        grad.cornerRadius = 16
+        grad.colors = [
+            UIColor(red: 99/255, green: 102/255, blue: 241/255, alpha: 0.08).cgColor,
+            UIColor.clear.cgColor
+        ]
+        grad.startPoint = CGPoint(x: 0, y: 0)
+        grad.endPoint = CGPoint(x: 1, y: 1)
+        card.layer.insertSublayer(grad, at: 0)
+    }
+    
+    // MARK: - Timers
+    private func startClock() {
+        clockTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
+            let f = DateFormatter()
+            f.dateFormat = "HH:mm:ss"
+            self?.timeLabel.text = f.string(from: Date())
+        }
+        clockTimer?.fire()
+    }
+    
+    private func startBatteryMonitor() {
+        UIDevice.current.isBatteryMonitoringEnabled = true
+        batteryTimer = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { [weak self] _ in
+            self?.updateBattery()
+        }
+        updateBattery()
+    }
+    
+    private func updateBattery() {
+        let level = Int(UIDevice.current.batteryLevel * 100)
+        let state = UIDevice.current.batteryState
+        let icon = state == .charging ? "⚡" : (level < 20 ? "🔴" : (level < 50 ? "🟡" : "🟢"))
+        batteryLabel.text = "\(icon) \(level)%"
+        
+        // Send battery to server if connected
+        if isConnected {
+            WebSocketClient.shared.sendBatteryLevel(level)
+        }
+    }
+    
+    // MARK: - Actions
     private func loadSavedSettings() {
         let savedIP = UserDefaults.standard.string(forKey: "iControl_server_ip") ?? "192.168.1.100"
         let savedPort = UserDefaults.standard.string(forKey: "iControl_server_port") ?? "9898"
-        
-        ipTextField.text = savedIP
-        portTextField.text = savedPort
+        ipField.text = savedIP
+        portField.text = savedPort
     }
     
-    @objc private func connectButtonPressed() {
-        self.view.endEditing(true)
-        
-        guard let ip = ipTextField.text, !ip.isEmpty else { return }
-        let port = (portTextField.text?.isEmpty ?? true) ? "9898" : portTextField.text!
-        
-        // Save settings
+    private func attemptConnect() {
+        guard let ip = ipField.text, !ip.isEmpty else { return }
+        let port = portField.text?.isEmpty == false ? portField.text! : "9898"
+        WebSocketClient.shared.connect(ip: ip, port: port)
+        setConnectedUI(true)
+    }
+    
+    @objc private func connectPressed() {
+        view.endEditing(true)
+        guard let ip = ipField.text, !ip.isEmpty else {
+            showToast("Nhập địa chỉ IP trước!")
+            return
+        }
+        let port = portField.text?.isEmpty == false ? portField.text! : "9898"
         UserDefaults.standard.set(ip, forKey: "iControl_server_ip")
         UserDefaults.standard.set(port, forKey: "iControl_server_port")
         
         if isConnected {
             WebSocketClient.shared.disconnect()
-            connectButton.setTitle("KẾT NỐI MÁY CHỦ", for: .normal)
-            connectButton.backgroundColor = UIColor(red: 16/255, green: 185/255, blue: 129/255, alpha: 1.0)
-            isConnected = false
+            setConnectedUI(false)
         } else {
-            WebSocketClient.shared.connect(ip: ip, port: port)
-            connectButton.setTitle("NGẮT KẾT NỐI", for: .normal)
-            connectButton.backgroundColor = UIColor(red: 239/255, green: 68/255, blue: 68/255, alpha: 1.0) // Red
-            isConnected = true
+            attemptConnect()
+        }
+        
+        // Haptic
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+    }
+    
+    @objc private func autoConnectChanged() {
+        UserDefaults.standard.set(autoConnectSwitch.isOn, forKey: "iControl_auto_connect")
+    }
+    
+    @objc private func hudChanged() {
+        if hudSwitch.isOn { FloatingWindow.shared.showHUD() }
+        else { FloatingWindow.shared.hideHUD() }
+    }
+    
+    @objc private func clearLog() {
+        logTextView.text = "── Log Cleared ──"
+    }
+    
+    @objc private func fieldFocused(_ field: UITextField) {
+        UIView.animate(withDuration: 0.2) {
+            field.layer.borderColor = UIColor(red: 99/255, green: 102/255, blue: 241/255, alpha: 0.6).cgColor
         }
     }
     
-    @objc private func hudSwitchChanged() {
-        if hudSwitch.isOn {
-            FloatingWindow.shared.showHUD()
-        } else {
-            FloatingWindow.shared.hideHUD()
+    @objc private func fieldBlurred(_ field: UITextField) {
+        UIView.animate(withDuration: 0.2) {
+            field.layer.borderColor = UIColor(white: 1, alpha: 0.07).cgColor
         }
     }
+    
+    @objc private func showAbout() {
+        let alert = UIAlertController(title: "iOSControl Pro v3.0", message: "Remote Script Automation Agent\n\nKết nối máy tính qua WiFi để điều khiển tự động.\n\n© 2026 iControl Team", preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "OK", style: .default))
+        present(alert, animated: true)
+    }
+    
+    // MARK: - Connected/Disconnected observers
+    @objc private func onDeviceConnected() {
+        DispatchQueue.main.async {
+            self.setConnectedUI(true)
+            self.appendLog("✅ Đã kết nối với server")
+        }
+    }
+    
+    @objc private func onDeviceDisconnected() {
+        DispatchQueue.main.async {
+            self.setConnectedUI(false)
+            self.appendLog("❌ Mất kết nối server")
+        }
+    }
+    
+    @objc private func onLogReceived(_ notification: Notification) {
+        guard let msg = notification.userInfo?["message"] as? String else { return }
+        DispatchQueue.main.async { self.appendLog(msg) }
+    }
+    
+    private func setConnectedUI(_ connected: Bool) {
+        isConnected = connected
+        UIView.animate(withDuration: 0.3) {
+            if connected {
+                self.wsStatusDot.backgroundColor = self.emerald
+                self.wsStatusLabel.text = "Đã kết nối"
+                self.wsStatusLabel.textColor = self.emerald
+                self.connectBtn.setTitle("⛔  NGẮT KẾT NỐI", for: .normal)
+                self.connectBtn.backgroundColor = self.red
+            } else {
+                self.wsStatusDot.backgroundColor = self.red
+                self.wsStatusLabel.text = "Chưa kết nối"
+                self.wsStatusLabel.textColor = self.textMuted
+                self.connectBtn.setTitle("🔗  KẾT NỐI MÁY CHỦ", for: .normal)
+                self.connectBtn.backgroundColor = self.emerald
+            }
+        }
+        startPulse(connected)
+    }
+    
+    private func startPulse(_ on: Bool) {
+        pulseTimer?.invalidate()
+        if on {
+            pulseTimer = Timer.scheduledTimer(withTimeInterval: 1.2, repeats: true) { [weak self] _ in
+                guard let dot = self?.wsStatusDot else { return }
+                UIView.animate(withDuration: 0.5, animations: {
+                    dot.transform = CGAffineTransform(scaleX: 1.4, y: 1.4)
+                    dot.alpha = 0.6
+                }) { _ in
+                    UIView.animate(withDuration: 0.4) {
+                        dot.transform = .identity
+                        dot.alpha = 1
+                    }
+                }
+            }
+        }
+    }
+    
+    private func appendLog(_ text: String) {
+        let f = DateFormatter(); f.dateFormat = "HH:mm:ss"
+        let line = "[\(f.string(from: Date()))] \(text)"
+        let current = logTextView.text ?? ""
+        let lines = current.components(separatedBy: "\n")
+        let trimmed = lines.suffix(50).joined(separator: "\n") // Keep last 50 lines
+        logTextView.text = trimmed + "\n" + line
+        let range = NSRange(location: logTextView.text.count - 1, length: 1)
+        logTextView.scrollRangeToVisible(range)
+    }
+    
+    private func showToast(_ msg: String) {
+        let toast = UILabel()
+        toast.text = "  \(msg)  "
+        toast.font = UIFont.systemFont(ofSize: 13, weight: .medium)
+        toast.textColor = .white
+        toast.backgroundColor = UIColor(red: 30/255, green: 38/255, blue: 60/255, alpha: 0.95)
+        toast.layer.cornerRadius = 10; toast.clipsToBounds = true
+        toast.textAlignment = .center
+        toast.alpha = 0
+        toast.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(toast)
+        NSLayoutConstraint.activate([
+            toast.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            toast.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -20),
+            toast.heightAnchor.constraint(equalToConstant: 40)
+        ])
+        UIView.animate(withDuration: 0.3) { toast.alpha = 1 }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+            UIView.animate(withDuration: 0.3) { toast.alpha = 0 } completion: { _ in toast.removeFromSuperview() }
+        }
+    }
+}
+
+// MARK: - PaddedTextField
+class PaddedTextField: UITextField {
+    var leftPadding: CGFloat = 12
+    override func textRect(forBounds bounds: CGRect) -> CGRect { bounds.inset(by: UIEdgeInsets(top: 0, left: leftPadding, bottom: 0, right: 12)) }
+    override func editingRect(forBounds bounds: CGRect) -> CGRect { bounds.inset(by: UIEdgeInsets(top: 0, left: leftPadding, bottom: 0, right: 12)) }
+}
+
+// MARK: - Notification Names
+extension Notification.Name {
+    static let wsConnected = Notification.Name("iControl.wsConnected")
+    static let wsDisconnected = Notification.Name("iControl.wsDisconnected")
+    static let wsLog = Notification.Name("iControl.wsLog")
 }

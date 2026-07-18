@@ -98,6 +98,7 @@ class WebSocketClient: NSObject {
                 DispatchQueue.main.async {
                     self.isConnected = false
                     FloatingWindow.shared.setStatus(online: false)
+                    NotificationCenter.default.post(name: .wsDisconnected, object: nil)
                     FloatingWindow.shared.addLog("Server disconnected. Auto reconnecting...")
                     self.scheduleReconnect()
                 }
@@ -173,6 +174,8 @@ class WebSocketClient: NSObject {
         
         isConnected = true
         FloatingWindow.shared.setStatus(online: true)
+        // Notify ViewController
+        NotificationCenter.default.post(name: .wsConnected, object: nil)
         FloatingWindow.shared.addLog("\u2705 Connected as \(name) [iOS \(iosVersion)] · \(ipAddress)")
     }
     
@@ -210,9 +213,18 @@ class WebSocketClient: NSObject {
             "message": message
         ]
         sendJSON(logPayload)
-        
-        // Also show on floating overlay
         FloatingWindow.shared.addLog(message)
+        // Notify ViewController log card
+        NotificationCenter.default.post(name: .wsLog, object: nil, userInfo: ["message": message])
+    }
+    
+    func sendBatteryLevel(_ level: Int) {
+        let payload: [String: Any] = [
+            "type": "status_report",
+            "status": "online",
+            "battery": level
+        ]
+        sendJSON(payload)
     }
     
     private func sendJSON(_ dict: [String: Any]) {
