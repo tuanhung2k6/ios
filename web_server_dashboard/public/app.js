@@ -1727,3 +1727,261 @@ if (streamToggleBtn) {
         if (vncActive && vncToggleBtn) vncToggleBtn.click();
     });
 }
+
+// ──────────────────────────────────────────────────────────────
+// v4.0 ADVANCED IDE CONTROLS (ACTIVITY BAR & DOCK TABS)
+// ──────────────────────────────────────────────────────────────
+
+// Activity Bar tab selection
+document.querySelectorAll('.activity-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+        document.querySelectorAll('.activity-btn').forEach(function(b) { b.classList.remove('active'); });
+        btn.classList.add('active');
+        const targetPanel = btn.getAttribute('data-sidebar');
+        
+        document.querySelectorAll('.sidebar-panel').forEach(function(panel) { panel.classList.remove('active'); });
+        const panel = document.getElementById('panel-' + targetPanel);
+        if (panel) panel.classList.add('active');
+    });
+});
+
+// Dock tabs selection
+document.querySelectorAll('.dock-tab-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+        document.querySelectorAll('.dock-tab-btn').forEach(function(b) { b.classList.remove('active'); });
+        btn.classList.add('active');
+        const targetDock = btn.getAttribute('data-dock');
+        
+        document.querySelectorAll('.dock-panel').forEach(function(panel) { panel.classList.remove('active'); });
+        const dock = document.getElementById('dock-' + targetDock);
+        if (dock) dock.classList.add('active');
+    });
+});
+
+// Toggle Editor Views (Code vs Flow Designer)
+const btnToggleCode = document.getElementById('btn-toggle-code-view');
+const btnToggleFlow = document.getElementById('btn-toggle-flow-view');
+if (btnToggleCode && btnToggleFlow) {
+    btnToggleCode.addEventListener('click', function() {
+        btnToggleCode.classList.add('active');
+        btnToggleFlow.classList.remove('active');
+        document.getElementById('editor-view-code').style.display = 'block';
+        document.getElementById('editor-view-flow').style.display = 'none';
+    });
+    btnToggleFlow.addEventListener('click', function() {
+        btnToggleFlow.classList.add('active');
+        btnToggleCode.classList.remove('active');
+        document.getElementById('editor-view-code').style.display = 'none';
+        document.getElementById('editor-view-flow').style.display = 'block';
+        renderFlowCanvas();
+    });
+}
+
+// ──────────────────────────────────────────────────────────────
+// FLOW DESIGNER ENGINE (DRAG & DROP BLOCK GRAPH)
+// ──────────────────────────────────────────────────────────────
+let flowNodes = [{ id: 'start', type: 'start' }];
+const flowCanvas = document.getElementById('flow-canvas-container');
+
+if (flowCanvas) {
+    flowCanvas.addEventListener('dragover', function(e) {
+        e.preventDefault();
+    });
+    
+    flowCanvas.addEventListener('drop', function(e) {
+        e.preventDefault();
+        const actionType = e.dataTransfer.getData('text/plain');
+        if (!actionType) return;
+        
+        const id = 'node_' + Date.now();
+        let newNode = { id: id, type: actionType };
+        if (actionType === 'tap') {
+            newNode.x = 100; newNode.y = 200;
+        } else if (actionType === 'swipe') {
+            newNode.x1 = 100; newNode.y1 = 200;
+            newNode.x2 = 100; newNode.y2 = 600;
+            newNode.duration = 500;
+        } else if (actionType === 'sleep') {
+            newNode.ms = 1000;
+        } else if (actionType === 'log') {
+            newNode.msg = 'Đang chạy tự động...';
+        }
+        flowNodes.push(newNode);
+        renderFlowCanvas();
+    });
+}
+
+// Drag start from toolbox
+document.querySelectorAll('.toolbox-item').forEach(function(item) {
+    item.addEventListener('dragstart', function(e) {
+        e.dataTransfer.setData('text/plain', item.getAttribute('data-action'));
+    });
+});
+
+function renderFlowCanvas() {
+    const canvas = document.getElementById('flow-canvas-container');
+    if (!canvas) return;
+    canvas.innerHTML = '';
+    
+    flowNodes.forEach(function(node, idx) {
+        const block = document.createElement('div');
+        block.className = 'flow-block-node node-' + node.type;
+        
+        let html = '<h4>' + node.type.toUpperCase();
+        if (node.type !== 'start') {
+            html += ' <span class="flow-node-delete" onclick="deleteFlowNode(\'' + node.id + '\')">🗑️</span>';
+        }
+        html += '</h4>';
+        
+        if (node.type === 'start') {
+            html += '<p style="font-size:10px; opacity:0.6;">Điểm bắt đầu kịch bản</p>';
+        } else if (node.type === 'tap') {
+            html += '<div style="display:flex; gap:6px;">' +
+                '<input type="number" placeholder="X" value="' + node.x + '" onchange="updateNodeProp(\'' + node.id + '\', \'x\', this.value)">' +
+                '<input type="number" placeholder="Y" value="' + node.y + '" onchange="updateNodeProp(\'' + node.id + '\', \'y\', this.value)">' +
+            '</div>';
+        } else if (node.type === 'swipe') {
+            html += '<div style="display:grid; grid-template-columns:1fr 1fr; gap:4px;">' +
+                '<input type="number" placeholder="X1" value="' + node.x1 + '" onchange="updateNodeProp(\'' + node.id + '\', \'x1\', this.value)">' +
+                '<input type="number" placeholder="Y1" value="' + node.y1 + '" onchange="updateNodeProp(\'' + node.id + '\', \'y1\', this.value)">' +
+                '<input type="number" placeholder="X2" value="' + node.x2 + '" onchange="updateNodeProp(\'' + node.id + '\', \'x2\', this.value)">' +
+                '<input type="number" placeholder="Y2" value="' + node.y2 + '" onchange="updateNodeProp(\'' + node.id + '\', \'y2\', this.value)">' +
+            '</div>' +
+            '<input type="number" placeholder="Duration (ms)" value="' + node.duration + '" style="margin-top:4px;" onchange="updateNodeProp(\'' + node.id + '\', \'duration\', this.value)">';
+        } else if (node.type === 'sleep') {
+            html += '<input type="number" placeholder="Chờ (ms)" value="' + node.ms + '" onchange="updateNodeProp(\'' + node.id + '\', \'ms\', this.value)">';
+        } else if (node.type === 'log') {
+            html += '<input type="text" placeholder="Nội dung ghi log" value="' + node.msg + '" onchange="updateNodeProp(\'' + node.id + '\', \'msg\', this.value)">';
+        } else if (node.type === 'screenshot') {
+            html += '<p style="font-size:10px; opacity:0.6;">Chụp ảnh màn hình</p>';
+        }
+        
+        block.innerHTML = html;
+        canvas.appendChild(block);
+        
+        if (idx < flowNodes.length - 1) {
+            const arrow = document.createElement('div');
+            arrow.className = 'flow-connector-line';
+            canvas.appendChild(arrow);
+        }
+    });
+}
+
+window.deleteFlowNode = function(id) {
+    flowNodes = flowNodes.filter(function(n) { return n.id !== id; });
+    renderFlowCanvas();
+};
+
+window.updateNodeProp = function(id, prop, value) {
+    const node = flowNodes.find(function(n) { return n.id === id; });
+    if (node) {
+        node[prop] = isNaN(value) ? value : parseInt(value);
+    }
+};
+
+const btnFlowGen = document.getElementById('btn-flow-generate');
+if (btnFlowGen) {
+    btnFlowGen.addEventListener('click', function() {
+        let code = '-- Generated Script via Flow Designer\n\n';
+        flowNodes.forEach(function(node) {
+            if (node.type === 'tap') {
+                code += 'tap(' + node.x + ', ' + node.y + ')\n';
+            } else if (node.type === 'swipe') {
+                code += 'swipe(' + node.x1 + ', ' + node.y1 + ', ' + node.x2 + ', ' + node.y2 + ', ' + node.duration + ')\n';
+            } else if (node.type === 'sleep') {
+                code += 'sleep(' + node.ms + ')\n';
+            } else if (node.type === 'log') {
+                code += 'log("' + node.msg + '")\n';
+            } else if (node.type === 'screenshot') {
+                code += 'screenshot()\n';
+            }
+        });
+        
+        if (window._editor) {
+            window._editor.setValue(code);
+        } else {
+            codeTextarea.value = code;
+        }
+        showToast('⚡ Thành công', 'Đã sinh mã LUA', 'success');
+        logToConsole('success', 'Đã chuyển sơ đồ Flow sang mã kịch bản.');
+        if (btnToggleCode) btnToggleCode.click();
+    });
+}
+
+const btnFlowClear = document.getElementById('btn-flow-clear');
+if (btnFlowClear) {
+    btnFlowClear.addEventListener('click', function() {
+        flowNodes = [{ id: 'start', type: 'start' }];
+        renderFlowCanvas();
+        showToast('🗑️ Đã xóa', 'Đặt lại sơ đồ Flow', 'info');
+    });
+}
+
+// ──────────────────────────────────────────────────────────────
+// CLIENT-SIDE AUTO OCR (USING TESSERACT.JS)
+// ──────────────────────────────────────────────────────────────
+const btnOcrExtract = document.getElementById('btn-ocr-extract');
+if (btnOcrExtract) {
+    btnOcrExtract.addEventListener('click', async function() {
+        if (!screenImageEl.src || screenImageEl.style.display === 'none') {
+            showToast('⚠️ Không có ảnh', 'Vui lòng bật stream hoặc chụp ảnh trước', 'warn');
+            return;
+        }
+        
+        showToast('👁️ OCR', 'Đang nhận diện chữ...', 'info');
+        logToConsole('system', 'Khởi chạy công cụ Tesseract OCR trên ảnh màn hình...');
+        
+        try {
+            const result = await Tesseract.recognize(screenImageEl.src, 'vie+eng', {
+                logger: function(m) {
+                    if (m.status === 'recognizing text') {
+                        logToConsole('info', 'OCR Tiến trình: ' + Math.round(m.progress * 100) + '%');
+                    }
+                }
+            });
+            const text = result.data.text.trim();
+            logToConsole('success', '=== KẾT QUẢ OCR ===\n' + text);
+            showToast('👁️ Thành công', 'Đã đọc được chữ viết', 'success');
+        } catch (err) {
+            logToConsole('error', 'Lỗi OCR: ' + err.message);
+            showToast('⚠️ Thất bại', 'Không thể hoàn thành OCR', 'error');
+        }
+    });
+}
+
+// ── Target device select dropdown selector bridge ──
+const selectTarget = document.getElementById('select-target-device');
+if (selectTarget) {
+    selectTarget.addEventListener('change', function(e) {
+        const udid = e.target.value;
+        if (udid) {
+            selectDevice(udid);
+        }
+    });
+}
+
+const _origRenderDeviceList = renderDeviceList;
+renderDeviceList = function() {
+    if (typeof _origRenderDeviceList === 'function') _origRenderDeviceList();
+    const selectTarget = document.getElementById('select-target-device');
+    if (selectTarget) {
+        selectTarget.innerHTML = '<option value="">— Chọn thiết bị —</option>';
+        connectedDevices.forEach(function(d) {
+            selectTarget.innerHTML += '<option value="' + d.udid + '"' + (d.udid === selectedDeviceUdid ? ' selected' : '') + '>' + d.name + ' (' + d.ip + ')</option>';
+        });
+    }
+};
+
+// Toggle Picker active states using index.html elements
+const btnPickerToggle = document.getElementById('btn-picker-toggle');
+if (btnPickerToggle) {
+    btnPickerToggle.addEventListener('click', function() {
+        pickerActive = !pickerActive;
+        btnPickerToggle.classList.toggle('active', pickerActive);
+        if (pickerActive) {
+            showToast('🎯 Picker bật', 'Bấm vào màn hình để tự sinh tap(x,y)', 'info');
+        } else {
+            showToast('Picker tắt', 'Đã chuyển về tương tác trực tiếp', 'info');
+        }
+    });
+}
