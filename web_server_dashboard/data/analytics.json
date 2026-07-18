@@ -1,0 +1,23 @@
+{
+  "totalRuns": 0,
+  "totalTaps": 3,
+  "totalSwipes": 0,
+  "totalRunTimeMs": 0,
+  "devices": {
+    "e2f27aea647a4dbdaefe7cdd233c4c29": {
+      "udid": "e2f27aea647a4dbdaefe7cdd233c4c29",
+      "runs": 0,
+      "taps": 3,
+      "swipes": 0,
+      "totalMs": 0,
+      "lastRun": null
+    }
+  },
+  "sessions": [
+    {
+      "udid": "e2f27aea647a4dbdaefe7cdd233c4c29",
+      "startedAt": null,
+      "durationMs": 0
+    }
+  ]
+}

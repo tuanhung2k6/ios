@@ -546,13 +546,13 @@ $('btn-refresh-devices').addEventListener('click', async () => {
 });
 
 // ── Code Editor Helpers ────────────────────────────────
-function updateLineNumbers() {
-    const count = (codeTextarea.value.match(/\n/g) || []).length + 1;
-    lineNumbersEl.innerHTML = Array.from({ length: count }, (_, i) => `<span>${i + 1}</span>`).join('');
-}
+function updateLineNumbers() {}
 
-codeTextarea.addEventListener('input', updateLineNumbers);
-codeTextarea.addEventListener('scroll', () => { lineNumbersEl.scrollTop = codeTextarea.scrollTop; });
+
+
+
+
+
 
 // Tab key support in editor
 codeTextarea.addEventListener('keydown', e => {
@@ -1345,7 +1345,7 @@ if ($('btn-new-folder')) {
 
 // Extend existing handleServerMessage
 const _origHandleMsg = handleServerMessage;
-function handleServerMessage(msg) {
+handleServerMessage = function(msg) {
     if (msg.type === 'analytics_update') { updateAnalyticsUI(msg.analytics); return; }
     if (msg.type === 'schedule_fired') { handleScheduleFired(msg); return; }
     if (msg.type === 'schedules_updated') { schedules = msg.schedules; renderSchedules(); return; }
@@ -1385,7 +1385,7 @@ function showToast(title, msg, type, duration) {
 
 // Toast for device events
 const _existingHandleMsg = handleServerMessage;
-function handleServerMessage(msg) {
+handleServerMessage = function(msg) {
     if (msg.type === 'device_connected') { showToast('?? Thi?t b? k?t n?i', msg.device.name + ' � ' + msg.device.ip, 'success'); }
     else if (msg.type === 'device_disconnected') { showToast('?? Thi?t b? ng?t', msg.device.name, 'warn'); }
     else if (msg.type === 'schedule_fired') { showToast('? L?ch k�ch ho?t!', msg.name, 'info'); }
@@ -1440,8 +1440,8 @@ const TEMPLATES = {
 
 var _exportLogs = [];
 var _baseLogFn = logToConsole;
-function logToConsole(level, msg, ts) {
-    _baseLogFn(level, msg, ts);
+logToConsole = function(level, msg, ts) {
+    if (typeof _baseLogFn === 'function') _baseLogFn(level, msg, ts);
     var time = ts || new Date().toLocaleTimeString('vi-VN');
     _exportLogs.push('[' + time + '] [' + level.toUpperCase() + '] ' + msg);
     if (_exportLogs.length > 5000) _exportLogs = _exportLogs.slice(-5000);
@@ -1631,3 +1631,64 @@ screenImageEl.addEventListener('mousemove', function(e) {
 screenImageEl.addEventListener('mouseleave', function() {
     if (magnifierGlass) magnifierGlass.style.display = 'none';
 });
+
+// ──────────────────────────────────────────────────────────────
+// VNC SCREEN STREAMING
+// ──────────────────────────────────────────────────────────────
+let vncActive = false;
+const vncToggleBtn = document.getElementById('btn-vnc-toggle');
+const vncIframe = document.getElementById('vnc-iframe');
+
+if (vncToggleBtn) {
+    vncToggleBtn.addEventListener('click', function() {
+        if (!selectedDeviceUdid) {
+            showToast('⚠️ Chọn thiết bị', 'Vui lòng chọn thiết bị trong danh sách trước', 'warn');
+            return;
+        }
+        
+        const device = connectedDevices.find(function(d) { return d.udid === selectedDeviceUdid; });
+        if (!device) return;
+
+        vncActive = !vncActive;
+        vncToggleBtn.classList.toggle('active', vncActive);
+        document.getElementById('vnc-toggle-label').textContent = vncActive ? 'Tắt VNC Stream' : 'Bật VNC Stream';
+
+        if (vncActive) {
+            // Stop screenshot streaming if active
+            if (isStreaming) {
+                const streamBtn = document.getElementById('btn-stream-toggle');
+                if (streamBtn) streamBtn.click();
+            }
+
+            screenPlaceholderEl.style.display = 'none';
+            screenImageEl.style.display = 'none';
+            vncIframe.style.display = 'block';
+
+            // Connect noVNC
+            const wsPort = device.vnc_port || 5900;
+            const vncUrl = '/vnc_helper.html?host=' + device.ip + '&port=' + wsPort;
+            
+            vncIframe.src = vncUrl;
+            showToast('📺 Kết nối VNC', 'Đang kết nối màn hình: ' + device.name, 'info');
+            logToConsole('system', 'Bắt đầu stream VNC tới ' + device.name + ' (' + device.ip + ':' + wsPort + ')');
+        } else {
+            vncIframe.src = '';
+            vncIframe.style.display = 'none';
+            screenPlaceholderEl.style.display = 'block';
+            showToast('📺 Ngắt kết nối VNC', 'Đã tắt màn hình VNC', 'warn');
+            logToConsole('system', 'Đã đóng stream VNC.');
+        }
+    });
+}
+
+// Auto-deactivate VNC when screenshot or screenshot stream is toggled
+if (screenshotBtn) {
+    screenshotBtn.addEventListener('click', function() {
+        if (vncActive && vncToggleBtn) vncToggleBtn.click();
+    });
+}
+if (streamToggleBtn) {
+    streamToggleBtn.addEventListener('click', function() {
+        if (vncActive && vncToggleBtn) vncToggleBtn.click();
+    });
+}

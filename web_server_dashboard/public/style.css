@@ -1018,3 +1018,13 @@ svg { display: block; flex-shrink: 0; }
   box-shadow: 0 0 25px rgba(6,182,212,0.5), inset 0 0 10px rgba(0,0,0,0.5);
   border: 2.5px solid var(--accent-cyan);
 }
+
+/* Constraint button icons to prevent massive stretching (Hallmark clean design) */
+.topbar-btn svg,
+.btn-action svg,
+.tab-btn svg,
+.icon-btn svg {
+  width: 14px !important;
+  height: 14px !important;
+  flex-shrink: 0;
+}

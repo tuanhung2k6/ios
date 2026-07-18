@@ -1,0 +1,65 @@
+﻿<!DOCTYPE html>
+<html style="margin:0;padding:0;overflow:hidden;background:#000;">
+<head>
+<meta charset="utf-8">
+<title>VNC Helper</title>
+<style>
+  * { margin: 0; padding: 0; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: #000; }
+  #screen { width: 100%; height: 100%; object-fit: contain; }
+</style>
+</head>
+<body>
+<!-- 
+  This page loads noVNC's core library and creates a bare VNC canvas
+  with NO toolbar/sidebar. The canvas scales to fit the full page.
+-->
+<div id="screen"></div>
+<script type="module">
+  // Load noVNC from TrollVNC's HTTP server
+  const params = new URLSearchParams(window.location.search);
+  const host = params.get('host') || window.location.hostname;
+  const port = params.get('port') || '5900';
+  const vncPort = params.get('vnc_http') || '5902';
+  
+  // Use noVNC's RFB class directly
+  const script = document.createElement('script');
+  script.type = 'module';
+  script.textContent = `
+    import RFB from 'http://${host}:${vncPort}/novnc/core/rfb.js';
+    
+    const screenEl = document.getElementById('screen');
+    
+    const rfb = new RFB(screenEl, 'ws://${host}:${port}', {
+      wsProtocols: ['binary'],
+    });
+    
+    rfb.viewOnly = true;
+    rfb.scaleViewport = true;
+    rfb.resizeSession = false;
+    rfb.showDotCursor = false;
+    rfb.background = '#000000';
+    rfb.qualityLevel = 6;
+    rfb.compressionLevel = 2;
+    
+    rfb.addEventListener('connect', () => {
+      console.log('VNC Helper: Connected');
+      // Force resize after connection
+      setTimeout(() => rfb.scaleViewport = true, 500);
+    });
+    
+    rfb.addEventListener('disconnect', (e) => {
+      console.log('VNC Helper: Disconnected', e.detail);
+      // Auto-reconnect after 3 seconds
+      setTimeout(() => window.location.reload(), 3000);
+    });
+    
+    // Handle window resize
+    window.addEventListener('resize', () => {
+      rfb.scaleViewport = true;
+    });
+  `;
+  document.body.appendChild(script);
+</script>
+</body>
+</html>
