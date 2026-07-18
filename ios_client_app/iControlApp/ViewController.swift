@@ -13,13 +13,8 @@ class ViewController: UIViewController {
     private let batteryLabel = UILabel()
     private let timeLabel = UILabel()
     
-    // Connection Card
-    private let connCard = UIView()
-    private let ipField = PaddedTextField()
-    private let portField = PaddedTextField()
-    private let connectBtn = UIButton(type: .system)
-    private let autoConnectSwitch = UISwitch()
-    private let autoConnectLabel = UILabel()
+    // Server Control Card
+    private let serverCard = UIView()
     
     // HUD Card
     private let hudSwitch = UISwitch()
@@ -55,7 +50,6 @@ class ViewController: UIViewController {
         super.viewDidLoad()
         setupNavBar()
         setupScrollView()
-        loadSavedSettings()
         startClock()
         startBatteryMonitor()
         
@@ -64,11 +58,6 @@ class ViewController: UIViewController {
         NotificationCenter.default.addObserver(self, selector: #selector(onDeviceDisconnected), name: Notification.Name.wsDisconnected, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(onLogReceived(_:)), name: Notification.Name.wsLog, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(onRefreshScripts), name: NSNotification.Name("RefreshScriptsNotification"), object: nil)
-        
-        // Auto-connect if saved
-        if UserDefaults.standard.bool(forKey: "iControl_auto_connect") {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { self.attemptConnect() }
-        }
     }
     
     override func viewDidLayoutSubviews() {
@@ -130,7 +119,7 @@ class ViewController: UIViewController {
         // Build cards inside content
         buildHeroSection(in: content)
         buildStatusCard(in: content)
-        buildConnectionCard(in: content)
+        buildServerControlCard(in: content)
         buildHUDCard(in: content)
         buildScriptCard(in: content)
         buildLogCard(in: content)
@@ -261,78 +250,107 @@ class ViewController: UIViewController {
         ])
     }
     
-    // MARK: - Connection Card
-    private func buildConnectionCard(in parent: UIView) {
+    // MARK: - Server Control Card (v5.4)
+    private func buildServerControlCard(in parent: UIView) {
         let prev = parent.subviews.last!
-        styleCard(connCard)
-        connCard.translatesAutoresizingMaskIntoConstraints = false
-        parent.addSubview(connCard)
+        styleCard(serverCard)
+        serverCard.translatesAutoresizingMaskIntoConstraints = false
+        parent.addSubview(serverCard)
+        
+        let titleL = cardSectionTitle("🖥️ MÁY CHỦ DASHBOARD (LOCAL)")
+        serverCard.addSubview(titleL)
+        
+        let statusDot = UIView()
+        statusDot.backgroundColor = emerald
+        statusDot.layer.cornerRadius = 6
+        statusDot.translatesAutoresizingMaskIntoConstraints = false
+        serverCard.addSubview(statusDot)
+        
+        let statusText = UILabel()
+        statusText.text = "Máy chủ đang chạy ngầm liên tục"
+        statusText.textColor = emerald
+        statusText.font = UIFont.systemFont(ofSize: 13, weight: .bold)
+        statusText.translatesAutoresizingMaskIntoConstraints = false
+        serverCard.addSubview(statusText)
+        
+        let ip = WebSocketClient.shared.getWiFiAddress() ?? "127.0.0.1"
+        let urlStr = "http://\(ip):9898"
+        
+        let urlContainer = UIView()
+        urlContainer.backgroundColor = UIColor(red: 8/255, green: 11/255, blue: 20/255, alpha: 1)
+        urlContainer.layer.cornerRadius = 10
+        urlContainer.layer.borderWidth = 1
+        urlContainer.layer.borderColor = UIColor(white: 1, alpha: 0.1).cgColor
+        urlContainer.translatesAutoresizingMaskIntoConstraints = false
+        serverCard.addSubview(urlContainer)
+        
+        let urlLabel = UILabel()
+        urlLabel.text = urlStr
+        urlLabel.textColor = textPrimary
+        urlLabel.font = UIFont.monospacedSystemFont(ofSize: 15, weight: .bold)
+        urlLabel.textAlignment = .center
+        urlLabel.translatesAutoresizingMaskIntoConstraints = false
+        urlContainer.addSubview(urlLabel)
+        
+        let descLabel = UILabel()
+        descLabel.text = "👉 Nhập địa chỉ trên vào trình duyệt web máy tính"
+        descLabel.textColor = textMuted
+        descLabel.font = UIFont.systemFont(ofSize: 11, weight: .medium)
+        descLabel.textAlignment = .center
+        descLabel.translatesAutoresizingMaskIntoConstraints = false
+        serverCard.addSubview(descLabel)
+        
+        // Copy Button
+        let copyBtn = UIButton(type: .system)
+        copyBtn.setTitle("📋 Sao chép URL", for: .normal)
+        copyBtn.setTitleColor(.white, for: .normal)
+        copyBtn.backgroundColor = accent
+        copyBtn.titleLabel?.font = UIFont.systemFont(ofSize: 13, weight: .bold)
+        copyBtn.layer.cornerRadius = 8
+        copyBtn.addTarget(self, action: #selector(copyServerUrl), for: .touchUpInside)
+        copyBtn.translatesAutoresizingMaskIntoConstraints = false
+        serverCard.addSubview(copyBtn)
+        
         NSLayoutConstraint.activate([
-            connCard.topAnchor.constraint(equalTo: prev.bottomAnchor, constant: 12),
-            connCard.leadingAnchor.constraint(equalTo: parent.leadingAnchor, constant: 20),
-            connCard.trailingAnchor.constraint(equalTo: parent.trailingAnchor, constant: -20),
-            connCard.heightAnchor.constraint(equalToConstant: 220)
+            serverCard.topAnchor.constraint(equalTo: prev.bottomAnchor, constant: 12),
+            serverCard.leadingAnchor.constraint(equalTo: parent.leadingAnchor, constant: 20),
+            serverCard.trailingAnchor.constraint(equalTo: parent.trailingAnchor, constant: -20),
+            serverCard.heightAnchor.constraint(equalToConstant: 180),
+            
+            titleL.topAnchor.constraint(equalTo: serverCard.topAnchor, constant: 12),
+            titleL.leadingAnchor.constraint(equalTo: serverCard.leadingAnchor, constant: 14),
+            
+            statusDot.leadingAnchor.constraint(equalTo: serverCard.leadingAnchor, constant: 14),
+            statusDot.topAnchor.constraint(equalTo: titleL.bottomAnchor, constant: 14),
+            statusDot.widthAnchor.constraint(equalToConstant: 12),
+            statusDot.heightAnchor.constraint(equalToConstant: 12),
+            
+            statusText.leadingAnchor.constraint(equalTo: statusDot.trailingAnchor, constant: 8),
+            statusText.centerYAnchor.constraint(equalTo: statusDot.centerYAnchor),
+            
+            urlContainer.topAnchor.constraint(equalTo: statusText.bottomAnchor, constant: 12),
+            urlContainer.leadingAnchor.constraint(equalTo: serverCard.leadingAnchor, constant: 14),
+            urlContainer.trailingAnchor.constraint(equalTo: serverCard.trailingAnchor, constant: -14),
+            urlContainer.heightAnchor.constraint(equalToConstant: 40),
+            
+            urlLabel.centerXAnchor.constraint(equalTo: urlContainer.centerXAnchor),
+            urlLabel.centerYAnchor.constraint(equalTo: urlContainer.centerYAnchor),
+            
+            descLabel.topAnchor.constraint(equalTo: urlContainer.bottomAnchor, constant: 8),
+            descLabel.leadingAnchor.constraint(equalTo: serverCard.leadingAnchor, constant: 14),
+            descLabel.trailingAnchor.constraint(equalTo: serverCard.trailingAnchor, constant: -14),
+            
+            copyBtn.topAnchor.constraint(equalTo: descLabel.bottomAnchor, constant: 12),
+            copyBtn.leadingAnchor.constraint(equalTo: serverCard.leadingAnchor, constant: 14),
+            copyBtn.trailingAnchor.constraint(equalTo: serverCard.trailingAnchor, constant: -14),
+            copyBtn.heightAnchor.constraint(equalToConstant: 36)
         ])
-        
-        let titleL = cardSectionTitle("🌐 Máy Chủ Dashboard")
-        connCard.addSubview(titleL)
-        
-        styleField(ipField, placeholder: "192.168.1.100", icon: "wifi")
-        styleField(portField, placeholder: "9898", icon: "number")
-        portField.keyboardType = .numberPad
-        portField.text = "9898"
-        
-        connCard.addSubview(ipField)
-        connCard.addSubview(portField)
-        
-        // Auto connect row
-        autoConnectLabel.text = "Tự kết nối khi mở app"
-        autoConnectLabel.font = UIFont.systemFont(ofSize: 13, weight: .medium)
-        autoConnectLabel.textColor = textMuted
-        autoConnectLabel.translatesAutoresizingMaskIntoConstraints = false
-        connCard.addSubview(autoConnectLabel)
-        
-        autoConnectSwitch.onTintColor = accent
-        autoConnectSwitch.isOn = UserDefaults.standard.bool(forKey: "iControl_auto_connect")
-        autoConnectSwitch.addTarget(self, action: #selector(autoConnectChanged), for: .valueChanged)
-        autoConnectSwitch.translatesAutoresizingMaskIntoConstraints = false
-        connCard.addSubview(autoConnectSwitch)
-        
-        // Connect Button
-        connectBtn.translatesAutoresizingMaskIntoConstraints = false
-        connectBtn.setTitle("🔗  KẾT NỐI MÁY CHỦ", for: .normal)
-        connectBtn.backgroundColor = emerald
-        connectBtn.setTitleColor(.white, for: .normal)
-        connectBtn.titleLabel?.font = UIFont.systemFont(ofSize: 15, weight: .bold)
-        connectBtn.layer.cornerRadius = 12
-        connectBtn.addTarget(self, action: #selector(connectPressed), for: .touchUpInside)
-        connCard.addSubview(connectBtn)
-        
-        NSLayoutConstraint.activate([
-            titleL.topAnchor.constraint(equalTo: connCard.topAnchor, constant: 14),
-            titleL.leadingAnchor.constraint(equalTo: connCard.leadingAnchor, constant: 14),
-            
-            ipField.topAnchor.constraint(equalTo: titleL.bottomAnchor, constant: 12),
-            ipField.leadingAnchor.constraint(equalTo: connCard.leadingAnchor, constant: 14),
-            ipField.trailingAnchor.constraint(equalTo: connCard.trailingAnchor, constant: -14),
-            ipField.heightAnchor.constraint(equalToConstant: 42),
-            
-            portField.topAnchor.constraint(equalTo: ipField.bottomAnchor, constant: 8),
-            portField.leadingAnchor.constraint(equalTo: connCard.leadingAnchor, constant: 14),
-            portField.widthAnchor.constraint(equalToConstant: 120),
-            portField.heightAnchor.constraint(equalToConstant: 42),
-            
-            autoConnectLabel.leadingAnchor.constraint(equalTo: portField.trailingAnchor, constant: 16),
-            autoConnectLabel.centerYAnchor.constraint(equalTo: portField.centerYAnchor),
-            
-            autoConnectSwitch.trailingAnchor.constraint(equalTo: connCard.trailingAnchor, constant: -14),
-            autoConnectSwitch.centerYAnchor.constraint(equalTo: portField.centerYAnchor),
-            
-            connectBtn.topAnchor.constraint(equalTo: portField.bottomAnchor, constant: 14),
-            connectBtn.leadingAnchor.constraint(equalTo: connCard.leadingAnchor, constant: 14),
-            connectBtn.trailingAnchor.constraint(equalTo: connCard.trailingAnchor, constant: -14),
-            connectBtn.heightAnchor.constraint(equalToConstant: 48),
-        ])
+    }
+    
+    @objc private func copyServerUrl() {
+        let ip = WebSocketClient.shared.getWiFiAddress() ?? "127.0.0.1"
+        UIPasteboard.general.string = "http://\(ip):9898"
+        showToast("Đã sao chép đường dẫn kết nối!")
     }
     
     // MARK: - HUD Card
@@ -524,45 +542,6 @@ class ViewController: UIViewController {
     }
     
     // MARK: - Actions
-    private func loadSavedSettings() {
-        let savedIP = UserDefaults.standard.string(forKey: "iControl_server_ip") ?? "192.168.1.100"
-        let savedPort = UserDefaults.standard.string(forKey: "iControl_server_port") ?? "9898"
-        ipField.text = savedIP
-        portField.text = savedPort
-    }
-    
-    private func attemptConnect() {
-        guard let ip = ipField.text, !ip.isEmpty else { return }
-        let port = portField.text?.isEmpty == false ? portField.text! : "9898"
-        WebSocketClient.shared.connect(ip: ip, port: port)
-        setConnectedUI(true)
-    }
-    
-    @objc private func connectPressed() {
-        view.endEditing(true)
-        guard let ip = ipField.text, !ip.isEmpty else {
-            showToast("Nhập địa chỉ IP trước!")
-            return
-        }
-        let port = portField.text?.isEmpty == false ? portField.text! : "9898"
-        UserDefaults.standard.set(ip, forKey: "iControl_server_ip")
-        UserDefaults.standard.set(port, forKey: "iControl_server_port")
-        
-        if isConnected {
-            WebSocketClient.shared.disconnect()
-            setConnectedUI(false)
-        } else {
-            attemptConnect()
-        }
-        
-        // Haptic
-        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-    }
-    
-    @objc private func autoConnectChanged() {
-        UserDefaults.standard.set(autoConnectSwitch.isOn, forKey: "iControl_auto_connect")
-    }
-    
     @objc private func hudChanged() {
         if hudSwitch.isOn { FloatingWindow.shared.showHUD() }
         else { FloatingWindow.shared.hideHUD() }
