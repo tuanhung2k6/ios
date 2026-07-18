@@ -397,5 +397,39 @@
     </div>
 
     <script src="app.js"></script>
+    
+    <!-- Hidden compatibility elements to prevent JS errors for removed components (v5.2) -->
+    <div style="display: none;">
+        <select id="select-target-device"></select>
+        <div id="line-numbers"></div>
+        <button id="btn-screenshot"></button>
+        <button id="btn-stream-toggle"></button>
+        <div id="device-info-panel"></div>
+        <div id="grid-container"></div>
+        <div id="grid-device-count"></div>
+        <div id="grid-stream-label"></div>
+        <button id="grid-screenshot-all"></button>
+        <button id="grid-stream-all"></button>
+        <button id="grid-run-all"></button>
+        <button id="grid-stop-all"></button>
+        <input id="sch-name" value="">
+        <input id="sch-loops" value="1">
+        <input id="sch-loop-delay" value="0">
+        <input id="sch-script-name" value="">
+        <button id="btn-add-schedule"></button>
+        <button id="sch-use-current"></button>
+        <button id="btn-run-loop"></button>
+        <input id="loop-count" value="1">
+        <input id="loop-delay" value="0">
+        <div id="loop-status"></div>
+        <div id="stat-runs"></div>
+        <div id="stat-taps"></div>
+        <div id="stat-swipes"></div>
+        <div id="stat-time"></div>
+        <canvas id="device-chart"></canvas>
+        <button id="btn-reset-analytics"></button>
+        <div id="schedule-count"></div>
+        <div id="folder-breadcrumb"></div>
+    </div>
 </body>
 </html>
