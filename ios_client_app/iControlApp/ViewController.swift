@@ -63,6 +63,7 @@ class ViewController: UIViewController {
         NotificationCenter.default.addObserver(self, selector: #selector(onDeviceConnected), name: Notification.Name.wsConnected, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(onDeviceDisconnected), name: Notification.Name.wsDisconnected, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(onLogReceived(_:)), name: Notification.Name.wsLog, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(onRefreshScripts), name: NSNotification.Name("RefreshScriptsNotification"), object: nil)
         
         // Auto-connect if saved
         if UserDefaults.standard.bool(forKey: "iControl_auto_connect") {
@@ -607,6 +608,12 @@ class ViewController: UIViewController {
     @objc private func onLogReceived(_ notification: Notification) {
         guard let msg = notification.userInfo?["message"] as? String else { return }
         DispatchQueue.main.async { self.appendLog(msg) }
+    }
+    
+    @objc private func onRefreshScripts() {
+        DispatchQueue.main.async {
+            self.loadAndRenderScripts()
+        }
     }
     
     private func setConnectedUI(_ connected: Bool) {
