@@ -1,365 +1,291 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>iOSControl Studio — Professional Automation IDE</title>
-    <meta name="description" content="Professional iOS automation IDE for remote script execution, device management, and real-time screen control.">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <title>iOSControl Studio — Ultimate Futuristic Automation IDE</title>
     <link rel="stylesheet" href="style.css">
-    <!-- Monaco Editor & Tesseract.js Loader -->
+    
+    <!-- Monaco Editor Loader & Tesseract OCR CDN -->
     <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs/loader.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.0.3/dist/tesseract.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.0.5/dist/tesseract.min.js"></script>
 </head>
-<body class="vs-theme-dark">
-    <div class="app-shell">
-        
-        <!-- ── VSCODE ACTIVITY BAR (FAR LEFT) ── -->
-        <div class="activity-bar">
+<body>
+
+    <!-- ── HEADER ── -->
+    <header class="app-header">
+        <div class="logo-section">
+            <div class="logo-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.5" width="18"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+            </div>
+            <span class="logo-text">iOSControl Studio v5.0</span>
+        </div>
+        <div class="header-right" style="display:flex; gap:16px; align-items:center;">
+            <!-- Active Device Name Quick Info -->
+            <div id="quick-device-info" style="font-size:11px; color:var(--cyan-glow); font-family:var(--font-tech); text-transform:uppercase; font-weight:700;">
+                Không có thiết bị chọn
+            </div>
+            <div class="status-indicator">
+                <span class="connection-dot disconnected" id="ws-dot"></span>
+                <span id="status-ws-indicator" style="font-family:var(--font-tech); font-weight:600; text-transform:uppercase; color:var(--text-secondary);">Offline</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- ── MAIN WRAPPER ── -->
+    <div class="main-wrapper">
+
+        <!-- ── ACTIVITY BAR (FAR LEFT) ── -->
+        <aside class="activity-bar">
             <div class="activity-top">
-                <button class="activity-btn active" data-sidebar="explorer" title="Explorer (Kịch bản)">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                <button class="activity-btn active" data-sidebar="explorer" title="Explorer (Script LUA)">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
                 </button>
-                <button class="activity-btn" data-sidebar="devices" title="Devices (Thiết bị)">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20"><rect x="5" y="2" width="14" height="20" rx="3"/><circle cx="12" cy="18" r="0.5" fill="currentColor"/></svg>
+                <button class="activity-btn" data-sidebar="devices" title="Devices Manager (Thiết bị)">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
                 </button>
-                <button class="activity-btn" data-sidebar="flow" title="Flow Builder (Kéo thả)">
+                <button class="activity-btn" data-sidebar="toolbox" title="Flow Toolbox (Kéo thả kịch bản)">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18M3 9h18"/></svg>
                 </button>
-                <button class="activity-btn" data-sidebar="scheduler" title="Scheduler & Tasks">
+                <button class="activity-btn" data-sidebar="scheduler" title="Scheduler (Lịch trình tự động)">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
                 </button>
-                <button class="activity-btn" data-sidebar="analytics" title="Analytics (Thống kê)">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
-                </button>
-                <button class="activity-btn" data-sidebar="git" title="Source Control (Git)">
+                <button class="activity-btn" data-sidebar="git" title="Git Source Control">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20"><circle cx="12" cy="18" r="3"/><circle cx="12" cy="6" r="3"/><line x1="12" y1="9" x2="12" y2="15"/></svg>
                 </button>
             </div>
             <div class="activity-bottom">
-                <button class="activity-btn" data-sidebar="install" title="Tải App & Tweak">
+                <button class="activity-btn" data-sidebar="settings" title="Cài đặt bảo mật">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                </button>
+                <button class="activity-btn" data-sidebar="install" title="Bộ cài đặt (T tweak / IPA)">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                 </button>
             </div>
-        </div>
+        </aside>
 
-        <!-- ── VSCODE PRIMARY SIDEBAR (CỘT TRÁI) ── -->
-        <aside class="sidebar" id="sidebar">
-            
-            <!-- 1. EXPLORER PANEL -->
+        <!-- ── SIDEBAR PANEL CONTAINER ── -->
+        <aside class="side-panel-container">
+
+            <!-- 1. EXPLORER -->
             <div class="sidebar-panel active" id="panel-explorer">
                 <div class="panel-header">
                     <h2>EXPLORER: SCRIPTS</h2>
-                    <div class="panel-actions">
-                        <button class="icon-btn" id="btn-new-folder" title="Tạo Thư mục">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                    <div class="panel-actions" style="display:flex; gap:6px;">
+                        <button class="activity-btn" id="btn-new-folder" title="Tạo Thư mục" style="width:24px; height:24px; border-radius:4px;">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
                         </button>
-                        <button class="icon-btn success" id="btn-new-script" title="Tạo Script mới">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13"><path d="M12 5v14M5 12h14"/></svg>
+                        <button class="activity-btn" id="btn-new-script" title="Tạo Script mới" style="width:24px; height:24px; border-radius:4px; color:var(--cyan-glow);">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12"><path d="M12 5v14M5 12h14"/></svg>
                         </button>
                     </div>
                 </div>
-                <div class="workspace-selector-wrap" style="padding: 6px 12px; border-bottom: 1px solid var(--border-vscode); display: flex; gap: 6px; align-items: center; background: rgba(0,0,0,0.12);">
-                    <select id="select-workspace" style="flex:1; background: var(--bg-input); border: 1px solid var(--border-vscode); color: white; font-size: 11px; padding: 4px 6px; border-radius: 4px; outline:none; height: 24px; font-family:var(--font-sans);">
+                <div class="workspace-selector-wrap">
+                    <select id="select-workspace" class="form-input" style="height:32px;">
                         <option value="">— Thư mục chính —</option>
                     </select>
-                    <button class="icon-btn success" id="btn-create-workspace" title="Tạo dự án con" style="padding: 2px; font-size: 11px; font-weight:bold;">📁+</button>
-                    <button class="icon-btn danger" id="btn-delete-workspace" title="Xóa dự án con" style="padding: 2px; font-size: 11px; font-weight:bold;">🗑️</button>
+                    <div style="display:flex; gap:6px; margin-top:8px;">
+                        <button class="btn-action success" id="btn-create-workspace" style="flex:1; padding:4px 8px; font-size:10px;">📁 Tạo Dự án</button>
+                        <button class="btn-action danger" id="btn-delete-workspace" style="flex:1; padding:4px 8px; font-size:10px;">🗑️ Xóa Dự án</button>
+                    </div>
                 </div>
-                <div class="script-list" id="script-list">
-                    <div class="empty-state"><small>Chưa có script</small></div>
+                <div class="list-wrapper" id="script-list">
+                    <div style="color:var(--text-muted); font-size:11px; text-align:center; padding:20px;">Đang tải danh sách...</div>
                 </div>
             </div>
 
-            <!-- 2. DEVICES PANEL -->
+            <!-- 2. DEVICES -->
             <div class="sidebar-panel" id="panel-devices">
                 <div class="panel-header">
-                    <h2>ACTIVE DEVICES</h2>
-                    <button class="icon-btn" id="btn-refresh-devices" title="Làm mới">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                    <h2>Danh sách thiết bị</h2>
+                    <button class="activity-btn" id="btn-refresh-devices" title="Làm mới" style="width:24px; height:24px; border-radius:4px;">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
                     </button>
                 </div>
-                <div class="device-list" id="device-list">
-                    <div class="empty-state"><small>Không có thiết bị</small></div>
+                <div class="list-wrapper" id="device-list">
+                    <div style="color:var(--text-muted); font-size:11px; text-align:center; padding:20px;">Đang tìm thiết bị...</div>
                 </div>
             </div>
 
-            <!-- 3. FLOW BUILDER TOOLBOX -->
-            <div class="sidebar-panel" id="panel-flow">
+            <!-- 3. FLOW TOOLBOX -->
+            <div class="sidebar-panel" id="panel-toolbox">
                 <div class="panel-header">
-                    <h2>FLOW TOOLBOX</h2>
+                    <h2>FLOW BUILDER TOOLBOX</h2>
                 </div>
                 <div class="flow-toolbox">
-                    <div class="toolbox-header">Kéo các khối kịch bản</div>
-                    <div class="toolbox-item" draggable="true" data-action="start">🟢 Bắt đầu (Start)</div>
-                    <div class="toolbox-item" draggable="true" data-action="tap">👆 Chạm (Tap)</div>
-                    <div class="toolbox-item" draggable="true" data-action="swipe">↕ Vuốt (Swipe)</div>
-                    <div class="toolbox-item" draggable="true" data-action="sleep">⏰ Chờ (Sleep)</div>
-                    <div class="toolbox-item" draggable="true" data-action="screenshot">📸 Chụp ảnh</div>
-                    <div class="toolbox-item" draggable="true" data-action="log">📋 Ghi log</div>
+                    <div class="flow-node-template" draggable="true" data-type="start">🟢 Khởi đầu</div>
+                    <div class="flow-node-template" draggable="true" data-type="tap">👆 Chạm (Tap)</div>
+                    <div class="flow-node-template" draggable="true" data-type="swipe">↔️ Vuốt (Swipe)</div>
+                    <div class="flow-node-template" draggable="true" data-type="sleep">⏰ Chờ (Sleep)</div>
+                    <div class="flow-node-template" draggable="true" data-type="log">✍️ Log console</div>
+                    <div class="flow-node-template" draggable="true" data-type="screenshot">📸 Chụp ảnh</div>
                 </div>
-                <div class="flow-actions-sidebar" style="padding: 12px; display:flex; flex-direction:column; gap: 8px;">
-                    <button class="btn-action success" id="btn-flow-generate" style="width: 100%;">
-                        ⚡ Sinh Mã LUA
-                    </button>
-                    <button class="btn-action danger" id="btn-flow-clear" style="width: 100%;">
-                        🗑️ Xóa sơ đồ
-                    </button>
+                <div style="padding: 12px; font-size: 10px; color: var(--text-muted); line-height: 1.5;">
+                    💡 Kéo các khối lệnh này sang khu vực Thiết kế Canvas bên cạnh để ghép nối kịch bản trực quan!
                 </div>
             </div>
 
-            <!-- 4. SCHEDULER PANEL -->
+            <!-- 4. SCHEDULER -->
             <div class="sidebar-panel" id="panel-scheduler">
                 <div class="panel-header">
-                    <h2>⏰ LÊN LỊCH</h2>
+                    <h2>Lên lịch tự động</h2>
                 </div>
-                <div class="scheduler-form" style="padding: 12px; display: flex; flex-direction: column; gap: 10px;">
+                <div class="workspace-selector-wrap" style="display:flex; flex-direction:column; gap:10px;">
+                    <input type="text" id="sch-time" placeholder="Thời gian (VD: 08:30)..." class="form-input">
+                    <select id="sch-script" class="form-input">
+                        <option value="">— Chọn Script để chạy —</option>
+                    </select>
                     <div class="form-group">
-                        <label>Tên lịch</label>
-                        <input type="text" id="sch-name" placeholder="Ví dụ: Auto Streak" class="form-input">
-                    </div>
-                    <div class="form-group">
-                        <label>Giờ chạy</label>
-                        <input type="time" id="sch-time" class="form-input" value="08:00">
-                    </div>
-                    <div class="form-group">
-                        <label>Ngày chạy</label>
-                        <div class="day-selector" style="display: flex; gap: 4px; flex-wrap: wrap;">
-                            <button class="day-btn active" data-day="1">T2</button>
-                            <button class="day-btn active" data-day="2">T3</button>
-                            <button class="day-btn active" data-day="3">T4</button>
-                            <button class="day-btn active" data-day="4">T5</button>
-                            <button class="day-btn active" data-day="5">T6</button>
-                            <button class="day-btn" data-day="6">T7</button>
-                            <button class="day-btn" data-day="0">CN</button>
+                        <label style="font-size:10px; color:var(--text-muted); text-transform:uppercase;">Ngày chạy</label>
+                        <div class="day-selector" style="display:flex; gap:4px; flex-wrap:wrap; margin-top:4px;">
+                            <button class="day-btn active" data-day="1" style="background:var(--bg-input); border:1px solid var(--border-glass); color:white; font-size:9px; padding:4px; border-radius:4px; cursor:pointer;">T2</button>
+                            <button class="day-btn active" data-day="2" style="background:var(--bg-input); border:1px solid var(--border-glass); color:white; font-size:9px; padding:4px; border-radius:4px; cursor:pointer;">T3</button>
+                            <button class="day-btn active" data-day="3" style="background:var(--bg-input); border:1px solid var(--border-glass); color:white; font-size:9px; padding:4px; border-radius:4px; cursor:pointer;">T4</button>
+                            <button class="day-btn active" data-day="4" style="background:var(--bg-input); border:1px solid var(--border-glass); color:white; font-size:9px; padding:4px; border-radius:4px; cursor:pointer;">T5</button>
+                            <button class="day-btn active" data-day="5" style="background:var(--bg-input); border:1px solid var(--border-glass); color:white; font-size:9px; padding:4px; border-radius:4px; cursor:pointer;">T6</button>
+                            <button class="day-btn" data-day="6" style="background:var(--bg-input); border:1px solid var(--border-glass); color:white; font-size:9px; padding:4px; border-radius:4px; cursor:pointer;">T7</button>
+                            <button class="day-btn" data-day="0" style="background:var(--bg-input); border:1px solid var(--border-glass); color:white; font-size:9px; padding:4px; border-radius:4px; cursor:pointer;">CN</button>
                         </div>
                     </div>
-                    <button class="btn-action success" id="btn-create-schedule" style="width: 100%;">
-                        ⏰ Tạo lịch mới
-                    </button>
+                    <button class="btn-action success" id="btn-create-schedule" style="width:100%;">⏰ Thêm Lịch Trình</button>
+                </div>
+                <div class="list-wrapper" id="schedule-list">
+                    <!-- List of active schedules -->
                 </div>
             </div>
 
-            <!-- 5. ANALYTICS PANEL -->
-            <div class="sidebar-panel" id="panel-analytics">
-                <div class="panel-header">
-                    <h2>📊 THỐNG KÊ</h2>
-                </div>
-                <div style="padding: 12px;">
-                    <div class="stat-card" style="margin-bottom: 12px;">
-                        <div class="stat-label">Tổng lượt click:</div>
-                        <div class="stat-value" id="stat-total-clicks">0</div>
-                    </div>
-                    <div class="stat-card" style="margin-bottom: 12px;">
-                        <div class="stat-label">Thời gian chạy (phút):</div>
-                        <div class="stat-value" id="stat-run-time">0</div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- 7. GIT PANEL -->
+            <!-- 5. GIT SOURCE CONTROL -->
             <div class="sidebar-panel" id="panel-git">
                 <div class="panel-header">
-                    <h2>SOURCE CONTROL: GIT</h2>
+                    <h2>Source Control (Git)</h2>
                 </div>
-                <div style="padding: 12px; display: flex; flex-direction: column; gap: 10px;">
+                <div style="padding:16px; display:flex; flex-direction:column; gap:12px;">
                     <input type="text" id="git-commit-msg" placeholder="Tin nhắn commit..." class="form-input">
-                    <button class="btn-action success" id="btn-git-commit" style="width: 100%;">🐙 Commit & Push</button>
-                    <div style="margin-top: 10px;">
-                        <span class="status-label" style="font-size: 10px; color: var(--text-muted); text-transform: uppercase;">Trạng thái tệp tin</span>
-                        <div id="git-status-list" style="margin-top: 6px; font-family: monospace; font-size: 10px; display: flex; flex-direction: column; gap: 4px; max-height: 250px; overflow-y: auto;">
-                            <div style="color: var(--text-muted);">Đang tải trạng thái...</div>
+                    <button class="btn-action success" id="btn-git-commit" style="width:100%;">🐙 Commit & Push origin</button>
+                    <div style="margin-top:10px;">
+                        <span class="status-label" style="font-size:10px; color:var(--text-muted); text-transform:uppercase;">Tệp tin thay đổi</span>
+                        <div id="git-status-list" style="margin-top:8px; display:flex; flex-direction:column; gap:6px; max-height:220px; overflow-y:auto;">
+                            <div style="color:var(--text-muted); font-size:11px;">Đang quét Git status...</div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- 6. INSTALL DEVICE APP PANEL -->
-            <div class="sidebar-panel" id="panel-install">
+            <!-- 6. SECURITY & ACCESS PASSCODE -->
+            <div class="sidebar-panel" id="panel-settings">
                 <div class="panel-header">
-                    <h2>📲 TẢI APP & TWEAK</h2>
+                    <h2>⚙️ Cài đặt bảo mật</h2>
                 </div>
-                <div style="padding: 12px; display: flex; flex-direction: column; gap: 12px;">
-                    <div class="setup-card">
-                        <h3>🔓 Jailbroken (Sileo)</h3>
-                        <code class="mono-code" id="repo-url-display" style="display:block; padding:8px; background:var(--bg-input); border-radius:4px; font-size:10px; color:var(--accent-cyan); word-break:break-all;">Loading...</code>
-                        <a href="/sileo_repo/debs/com.tuanhungdz.ioscontrol_1.8.1_iphoneos-arm64_rebuilt.deb" class="btn-action success" style="width: 100%; text-align: center; display: block; text-decoration: none; margin-top: 6px;" download>Tải Tweak DEB</a>
+                <div style="padding:16px; display:flex; flex-direction:column; gap:12px;">
+                    <div class="form-group">
+                        <label style="font-size:10px; color:var(--text-muted); text-transform:uppercase;">Mật khẩu xác thực API / WS</label>
+                        <input type="password" id="input-passcode" placeholder="Mật khẩu bảo vệ..." class="form-input" style="letter-spacing:2px; margin-top:4px;">
                     </div>
-                    <div class="setup-card">
-                        <h3>📦 TrollStore (IPA)</h3>
-                        <a href="/downloads/iControlApp_patched.ipa" class="btn-action" style="width: 100%; text-align: center; display: block; text-decoration: none; margin-bottom: 4px;" download>Tải IPA Patched</a>
-                        <a href="/downloads/iControlApp_personal.ipa" class="btn-action" style="width: 100%; text-align: center; display: block; text-decoration: none;" download>Tải IPA Personal</a>
+                    <button class="btn-action success" id="btn-save-passcode" style="width:100%;">🛡️ Lưu Mật Khẩu</button>
+                    <div style="font-size:10px; color:var(--text-muted); line-height:1.5; margin-top:6px;">
+                        ⚠️ Nhập mật khẩu để bảo vệ thiết bị. Khi đặt mật khẩu, các API và WebSocket từ thiết bị lạ sẽ bị chặn truy cập nếu không điền đúng mật khẩu.
                     </div>
                 </div>
             </div>
+
+            <!-- 7. INSTALLERS -->
+            <div class="sidebar-panel" id="panel-install">
+                <div class="panel-header">
+                    <h2>CÀI ĐẶT APP & TWEAK</h2>
+                </div>
+                <div style="padding: 16px; display:flex; flex-direction:column; gap:12px;">
+                    <a href="/download/tweak" class="btn-action success" style="width:100%; text-decoration:none; justify-content:center;">📥 Tải Tweak iOSControl (.deb)</a>
+                    <a href="/download/ipa" class="btn-action" style="width:100%; text-decoration:none; justify-content:center;">📱 Tải iControlApp (.ipa)</a>
+                    <div style="font-size:10px; color:var(--text-muted); line-height:1.5;">
+                        💡 Quét mã QR code trên màn hình chính bằng máy ảnh iPhone của bạn để cài đặt trực tiếp tweak điều khiển tự động qua mạng nội bộ.
+                    </div>
+                </div>
+            </div>
+
         </aside>
 
-        <!-- ── VSCODE MAIN AREA (CENTER + DOCK) ── -->
-        <main class="main-area">
-            
-            <!-- VSCode Editor Layout Header -->
+        <!-- ── WORKSPACE SPLIT ── -->
+        <main class="workspace-split">
+
+            <!-- VSCode Header Tabs -->
             <div class="editor-header">
-                <!-- Left half tabs (Editor) -->
                 <div class="editor-tabs-bar">
                     <div class="editor-tab active" id="btn-toggle-code-view">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" style="color: var(--accent-indigo); margin-right: 4px;"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+                        <span>📝</span>
                         <span id="editor-active-filename">main.lua</span>
                     </div>
                     <div class="editor-tab" id="btn-toggle-flow-view">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" style="color: var(--accent-emerald); margin-right: 4px;"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 21V9M3 9h18"/></svg>
+                        <span>🔀</span>
                         <span>Flow Designer</span>
                     </div>
                 </div>
-                
-                <!-- Target Device Selection Dropdown -->
-                <div class="header-device-selector">
-                    <span style="font-size: 11px; color: var(--text-muted);">Mục tiêu:</span>
-                    <select id="select-target-device">
-                        <option value="">— Chọn thiết bị —</option>
-                    </select>
-                    <!-- Global Multi-Sync Switch -->
-                    <label class="sync-switch-label" title="Đồng bộ thao tác chạm/vuốt trên màn hình chính tới tất cả các máy khác" style="margin-left: 10px; display:flex; align-items:center; gap: 4px; cursor:pointer;">
-                        <input type="checkbox" id="chk-multi-sync" style="cursor:pointer;">
-                        <span style="font-size: 11px; font-weight:600; color: var(--accent-indigo);">👥 Sync</span>
-                    </label>
-                </div>
-
-                <!-- Global Execution Control -->
-                <div class="editor-controls">
-                    <div class="template-dropdown" id="template-dropdown">
-                        <button class="btn-action" id="btn-templates">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
-                            Templates
-                        </button>
-                        <div class="template-menu" id="template-menu" style="display:none">
-                            <div class="template-item" data-tpl="tap_basic">👆 Tap đơn giản</div>
-                            <div class="template-item" data-tpl="swipe_vertical">↕ Vuốt dọc</div>
-                            <div class="template-item" data-tpl="loop_tap">🔁 Lặp click vô hạn</div>
-                            <div class="template-item" data-tpl="open_app">📱 Mở app</div>
-                            <div class="template-item" data-tpl="snapchat_farm">👻 Snapchat Streak</div>
-                            <div class="template-item" data-tpl="scroll_feed">📜 Cuộn Feed</div>
-                        </div>
-                    </div>
-                    <button class="btn-action" id="btn-save">💾 Lưu</button>
-                    <button class="btn-action success" id="btn-run" disabled>▶ Chạy</button>
-                    <button class="btn-action danger" id="btn-stop" disabled>⏹ Dừng</button>
+                <div class="editor-controls" style="display:flex; gap:8px;">
+                    <input type="text" id="script-name" value="main.lua" class="form-input" style="width:140px; height:28px; padding:2px 8px; font-size:11px;">
+                    <button class="btn-action success" id="btn-save" style="padding:4px 10px; font-size:11px;">💾 Lưu</button>
+                    <button class="btn-action success" id="btn-run" style="padding:4px 10px; font-size:11px;">▶ Chạy</button>
+                    <button class="btn-action danger" id="btn-stop" style="padding:4px 10px; font-size:11px;">⏹ Dừng</button>
+                    
+                    <span style="width:1px; height:18px; background:var(--border-glass); margin:0 4px;"></span>
+                    
+                    <button class="btn-action" id="btn-run-all" style="padding:4px 10px; font-size:11px;">▶ Chạy Hàng Loạt</button>
+                    <button class="btn-action danger" id="btn-stop-all" style="padding:4px 10px; font-size:11px;">⏹ Dừng Hàng Loạt</button>
                 </div>
             </div>
 
-            <!-- split view: Left Code Editor, Right Dock Panel -->
-            <div class="workspace-split">
-                
-                <!-- LEFT PANEL: Monaco Code Editor & Flow Canvas -->
-                <div class="split-pane-left">
-                    <!-- Text Editor Panel -->
+            <!-- Split Panes -->
+            <div class="split-panes">
+
+                <!-- LEFT PANE: Editor / Canvas -->
+                <div class="left-pane">
+                    <!-- Code view -->
                     <div class="editor-panel-view active" id="editor-view-code" style="width:100%; height:100%;">
                         <div id="editor-container" style="width: 100%; height: 100%;"></div>
                         <textarea id="code-textarea" style="display: none;"></textarea>
                     </div>
-
-                    <!-- Flow Builder Panel -->
-                    <div class="editor-panel-view" id="editor-view-flow" style="display:none; position:relative; width:100%; height:100%;">
-                        <div class="flow-canvas-container" id="flow-canvas-container" style="width:100%; height:100%; background:#1e1e24; position:relative; overflow:auto; padding: 20px;">
-                            <!-- Blocks will be drawn here dynamically -->
+                    <!-- Flow view -->
+                    <div class="editor-panel-view" id="editor-view-flow" style="display:none; position:relative; width:100%; height:100%; background:#0a0e1a;">
+                        <canvas id="flow-canvas" style="width:100%; height:100%; display:block;"></canvas>
+                        <div class="flow-controls" style="position:absolute; top:12px; right:12px; display:flex; gap:6px;">
+                            <button class="btn-action success" id="btn-flow-generate" style="font-size:10px; padding:6px 12px;">⚡ Sinh mã LUA</button>
+                            <button class="btn-action danger" id="btn-flow-clear" style="font-size:10px; padding:6px 12px;">🗑️ Xóa canvas</button>
                         </div>
                     </div>
                 </div>
 
-                <!-- RIGHT PANEL: Docked Live Device Screen & Tabs -->
-                <div class="split-pane-right">
-                    <!-- Tabs to change what's inside the right side dock -->
-                    <div class="dock-tabs">
-                        <button class="dock-tab-btn active" data-dock="screen">🎥 Live Screen</button>
-                        <button class="dock-tab-btn" data-dock="info">📱 Device Info</button>
-                        <button class="dock-tab-btn" data-dock="schedules">⏰ Active Schedules</button>
-                        <button class="dock-tab-btn" data-dock="analytics">📊 Analytics Chart</button>
-                        <button class="dock-tab-btn" data-dock="grid">👥 Grid View</button>
-                    </div>
-
-                    <div class="dock-content">
-                        <!-- DOCK: LIVE SCREEN -->
-                        <div class="dock-panel active" id="dock-screen">
-                            <div class="screen-toolbar">
-                                <button class="btn-action" id="btn-screenshot">📸 Chụp ảnh</button>
-                                <button class="btn-action" id="btn-stream-toggle">Bật Stream</button>
-                                <button class="btn-action" id="btn-vnc-toggle">📺 Bật VNC</button>
-                                <!-- Picker mode toggle -->
-                                <button class="btn-action" id="btn-picker-toggle" style="background: rgba(6,182,212,0.1); border-color: rgba(6,182,212,0.3); color: var(--accent-cyan);">🎯 Picker</button>
-                                <!-- OCR triggers -->
-                                <button class="btn-action" id="btn-ocr-extract" style="background: rgba(16,185,129,0.1); border-color: rgba(16,185,129,0.3); color: var(--accent-emerald);">👁️ OCR</button>
-                                <span class="screen-fps" id="screen-fps"></span>
-                            </div>
-                            <div class="screen-viewer">
-                                <div class="device-frame" id="device-frame" style="position: relative; width: 100%; max-width: 380px; margin: 0 auto;">
-                                    <div class="screen-placeholder" id="screen-placeholder">
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" width="48" height="48" opacity="0.25"><rect x="5" y="2" width="14" height="20" rx="3"/><circle cx="12" cy="18" r="0.5" fill="currentColor"/></svg>
-                                        <p>Chưa có kết nối màn hình</p>
-                                    </div>
-                                    <img id="screen-image" alt="Device Screen" style="display:none; width:100%; border-radius:8px; pointer-events: auto;">
-                                    <iframe id="vnc-iframe" style="display: none; width: 100%; height: 500px; border: none; border-radius: 8px; background: #000;" allowfullscreen></iframe>
-                                    <!-- Magnifier Glass -->
-                                    <div id="magnifier-glass" style="display: none; position: absolute; pointer-events: none; border: 2.5px solid var(--accent-cyan); border-radius: 50%; width: 130px; height: 130px; box-shadow: 0 0 25px rgba(6,182,212,0.5); overflow: hidden; z-index: 100; background: var(--bg-surface);">
-                                        <canvas id="magnifier-canvas" width="130" height="130" style="width: 100%; height: 100%; display: block; image-rendering: pixelated;"></canvas>
-                                    </div>
-                                </div>
-                                
-                                <!-- Coordinate & Color Info Bar -->
-                                <div class="picker-info-bar" id="picker-info-bar" style="display: none;">
-                                    <div class="picker-info-item">
-                                        <span class="picker-coords" id="picker-coords">x: — y: —</span>
-                                    </div>
-                                    <div class="picker-info-item">
-                                        <span class="picker-color-swatch" id="picker-color-swatch"></span>
-                                        <span id="picker-color-hex">#—</span>
-                                    </div>
-                                    <div class="picker-info-item code-item">
-                                        <span class="picker-value code" id="picker-code">tap(—, —)</span>
-                                    </div>
-                                </div>
+                <!-- RIGHT PANE: Device Viewer (VNC Stream) -->
+                <div class="right-pane">
+                    <div class="vnc-screen-wrap">
+                        
+                        <!-- Toolbar for Live control -->
+                        <div style="display:flex; justify-content:space-between; width:100%; max-width:320px; align-items:center; background:rgba(255,255,255,0.02); border:1px solid var(--border-glass); padding:8px 12px; border-radius:8px;">
+                            <!-- Sync Checkbox -->
+                            <label style="font-size:11px; display:flex; align-items:center; gap:6px; cursor:pointer; font-weight:700; color:var(--cyan-glow);">
+                                <input type="checkbox" id="chk-multi-sync" style="cursor:pointer; width:14px; height:14px; accent-color:var(--cyan-glow);"> 👥 Sync
+                            </label>
+                            
+                            <div style="display:flex; gap:6px;">
+                                <button class="btn-action success" id="btn-ocr-extract" style="padding:4px 8px; font-size:10px;">👁️ OCR</button>
+                                <button class="btn-action" id="btn-picker-toggle" style="padding:4px 8px; font-size:10px;">🎨 Picker</button>
+                                <button class="btn-action" id="btn-vnc-toggle" style="padding:4px 8px; font-size:10px;">🎮 VNC</button>
                             </div>
                         </div>
 
-                        <!-- DOCK: DEVICE INFO -->
-                        <div class="dock-panel" id="dock-info">
-                            <div class="device-detail-view" id="device-detail-view" style="padding: 16px;">
-                                <div class="no-device-selected" style="text-align: center; padding: 40px 10px;">
-                                    <p>Vui lòng kết nối và chọn một thiết bị</p>
-                                </div>
+                        <!-- Device Screen Box -->
+                        <div class="screen-container" id="screen-container-box">
+                            <div class="screen-placeholder" id="screen-placeholder" style="position:absolute; top:0; left:0; width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:20px; background:#0b0f19;">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="1.5" width="48" style="margin-bottom:12px;"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
+                                <span style="font-size:11px; color:var(--text-muted);">Không có thiết bị kết nối</span>
+                                <small style="font-size:9px; color:var(--text-muted); margin-top:8px;">Vui lòng chọn thiết bị ở sidebar để bắt đầu Live Stream</small>
                             </div>
+                            
+                            <img id="screen-image" style="display: none; width: 100%; height: 100%; object-fit: contain; cursor: crosshair;">
+                            <iframe id="vnc-iframe" style="display: none; width: 100%; height: 100%; border: none; background: #000;" allowfullscreen></iframe>
                         </div>
 
-                        <!-- DOCK: ACTIVE SCHEDULES -->
-                        <div class="dock-panel" id="dock-schedules">
-                            <div class="schedules-list" id="schedules-list" style="padding:16px;">
-                                <div class="empty-state"><small>Chưa có lịch lập sẵn</small></div>
-                            </div>
-                        </div>
-
-                        <!-- DOCK: ANALYTICS CHART -->
-                        <div class="dock-panel" id="dock-analytics" style="padding:16px;">
-                            <canvas id="analyticsChart" style="width:100%; max-height: 350px;"></canvas>
-                        </div>
-
-                        <!-- DOCK: GRID VIEW -->
-                        <div class="dock-panel" id="dock-grid">
-                            <div class="grid-toolbar" style="padding: 8px 16px; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-subtle)">
-                                <div class="grid-controls">
-                                    <button class="grid-size-btn active" data-cols="2">2×</button>
-                                    <button class="grid-size-btn" data-cols="3">3×</button>
-                                </div>
-                                <div class="grid-batch-actions">
-                                    <button class="btn-action" id="grid-screenshot-all">Chụp tất cả</button>
-                                    <button class="btn-action" id="grid-stream-all">Stream tất cả</button>
-                                    <button class="btn-action success" id="grid-run-all">Chạy tất cả</button>
-                                    <button class="btn-action danger" id="grid-stop-all">Dừng tất cả</button>
-                                </div>
-                            </div>
-                            <div class="grid-container" id="grid-container" style="padding: 16px; display:grid; gap:12px;">
-                                <div class="empty-state"><small>Không có thiết bị cho lưới</small></div>
-                            </div>
+                        <!-- FPS / Device Details -->
+                        <div style="display:flex; justify-content:space-between; width:100%; max-width:320px; font-size:10px; color:var(--text-secondary);">
+                            <span id="screen-fps">0 fps</span>
+                            <span id="selected-device-udid" style="font-family:var(--font-mono); font-size:9px;">UDID: —</span>
                         </div>
                     </div>
                 </div>
@@ -373,21 +299,21 @@
                         <span class="console-led" id="console-led"></span>
                         <h3>Terminal Console Logs</h3>
                     </div>
-                    <div class="console-controls">
-                        <select id="log-filter" class="log-filter-select">
+                    <div class="console-controls" style="display:flex; gap:8px; align-items:center;">
+                        <select id="log-filter" class="form-input" style="width:80px; height:24px; padding:2px 4px; font-size:10px;">
                             <option value="all">Tất cả</option>
                             <option value="info">Info</option>
                             <option value="success">Success</option>
                             <option value="error">Error</option>
                         </select>
-                        <button class="icon-btn" id="btn-export-logs" title="Xuất logs">💾</button>
-                        <button class="icon-btn" id="btn-clear-console" title="Xóa logs">🗑️</button>
+                        <button class="activity-btn" id="btn-export-logs" title="Xuất logs" style="width:24px; height:24px; border-radius:4px;">💾</button>
+                        <button class="activity-btn" id="btn-clear-console" title="Xóa logs" style="width:24px; height:24px; border-radius:4px;">🗑️</button>
                     </div>
                 </div>
                 <div class="console-body" id="console-logs">
                     <div class="console-line system">
                         <span class="log-badge system">SYS</span>
-                        iOSControl Studio IDE ready.
+                        iOSControl Futuristic Studio IDE ready.
                     </div>
                 </div>
             </div>
@@ -395,12 +321,15 @@
             <!-- VSCODE STATUS BAR (BOTTOM) -->
             <footer class="status-bar">
                 <div class="status-left">
-                    <span class="status-item"><span class="connection-dot disconnected" id="ws-dot"></span> <span id="status-ws-indicator">Offline</span></span>
+                    <span class="status-item">
+                        <span class="connection-dot disconnected" id="ws-dot-bar"></span> 
+                        <span id="status-ws-indicator-bar">Offline</span>
+                    </span>
                     <span class="status-item" id="status-device-indicator">Devices: <span id="device-count">0</span></span>
                     <span class="status-item" id="server-address-display">localhost:9898</span>
                 </div>
                 <div class="status-center">
-                    <span class="status-item font-semibold" style="color:var(--accent-cyan)">iControl Script Engine v4.2</span>
+                    <span class="status-item font-semibold" style="color:var(--cyan-glow); font-family:var(--font-tech); font-weight:700;">iControl Tech Engine v5.0</span>
                 </div>
                 <div class="status-right">
                     <span class="status-item">UTF-8</span>

@@ -89,7 +89,20 @@ function connectWebSocket() {
 }
 
 function setWsStatus(online) {
-    wsDotEl.className = 'connection-dot ' + (online ? 'connected' : 'disconnected');
+    const dot = $('ws-dot');
+    const dotBar = $('ws-dot-bar');
+    const text = $('status-ws-indicator');
+    const textBar = $('status-ws-indicator-bar');
+    
+    const className = 'connection-dot ' + (online ? 'connected' : 'disconnected');
+    if (dot) dot.className = className;
+    if (dotBar) dotBar.className = className;
+    
+    const statusText = online ? 'Online' : 'Offline';
+    if (text) {
+        text.textContent = statusText;
+    }
+    if (textBar) textBar.textContent = statusText;
 }
 
 // ── Server Message Router ──────────────────────────────
@@ -247,7 +260,14 @@ function selectDevice(udid) {
     updateActionButtons();
     renderDeviceInfoPanel();
     const d = connectedDevices.find(x => x.udid === udid);
-    if (d) logToConsole('system', `Đã chọn: ${d.name}`);
+    if (d) {
+        logToConsole('system', `Đã chọn: ${d.name}`);
+        const quickInfo = $('quick-device-info');
+        if (quickInfo) quickInfo.textContent = "Thiết bị: " + d.name;
+    } else {
+        const quickInfo = $('quick-device-info');
+        if (quickInfo) quickInfo.textContent = "Không có thiết bị chọn";
+    }
 }
 
 function openScreenTab(udid) {
