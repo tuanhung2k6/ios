@@ -1985,3 +1985,134 @@ if (btnPickerToggle) {
         }
     });
 }
+
+// ──────────────────────────────────────────────────────────────
+// v4.1 GIT PANEL & KEYBOARD EMULATOR CLIENT IMPLEMENTATION
+// ──────────────────────────────────────────────────────────────
+
+// 1. GIT PANEL FUNCTIONALITY
+const gitStatusList = document.getElementById('git-status-list');
+const gitCommitMsg = document.getElementById('git-commit-msg');
+const btnGitCommit = document.getElementById('btn-git-commit');
+
+async function loadGitStatus() {
+    if (!gitStatusList) return;
+    try {
+        const res = await fetch('/api/git/status');
+        const data = await res.json();
+        if (data.success && data.files) {
+            gitStatusList.innerHTML = '';
+            if (data.files.length === 0) {
+                gitStatusList.innerHTML = '<div style="color: var(--text-muted); font-style: italic;">Không có thay đổi nào.</div>';
+                return;
+            }
+            data.files.forEach(function(file) {
+                const item = document.createElement('div');
+                item.style.display = 'flex';
+                item.style.justifyContent = 'space-between';
+                item.style.padding = '4px 6px';
+                item.style.borderRadius = '3px';
+                item.style.background = 'rgba(255,255,255,0.02)';
+                
+                let badgeColor = 'var(--text-muted)';
+                let badgeText = file.status;
+                if (file.status === 'M') { badgeColor = 'var(--accent-amber)'; badgeText = 'Sửa đổi'; }
+                else if (file.status === '??') { badgeColor = 'var(--accent-emerald)'; badgeText = 'Mới'; }
+                else if (file.status === 'D') { badgeColor = 'var(--accent-red)'; badgeText = 'Xóa'; }
+
+                item.innerHTML = '<span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 170px;" title="' + file.name + '">' + file.name + '</span>' +
+                                 '<span style="color:' + badgeColor + '; font-size:9px; font-weight:700;">' + badgeText + '</span>';
+                gitStatusList.appendChild(item);
+            });
+        } else {
+            gitStatusList.innerHTML = '<div style="color: var(--accent-red);">Không thể tải trạng thái Git.</div>';
+        }
+    } catch (err) {
+        gitStatusList.innerHTML = '<div style="color: var(--accent-red);">Lỗi kết nối.</div>';
+    }
+}
+
+// Fetch Git status when Git sidebar is selected
+const gitActBtn = document.querySelector('[data-sidebar="git"]');
+if (gitActBtn) {
+    gitActBtn.addEventListener('click', function() {
+        loadGitStatus();
+    });
+}
+
+// Commit and Push handler
+if (btnGitCommit) {
+    btnGitCommit.addEventListener('click', async function() {
+        const msg = gitCommitMsg.value.trim();
+        if (!msg) {
+            showToast('⚠️ Thiếu thông tin', 'Vui lòng nhập tin nhắn commit', 'warn');
+            return;
+        }
+        
+        btnGitCommit.disabled = true;
+        btnGitCommit.textContent = '🐙 Đang Push...';
+        showToast('🐙 Git Push', 'Đang đẩy code lên GitHub...', 'info');
+        logToConsole('system', 'Bắt đầu commit và push code lên GitHub...');
+        
+        try {
+            const res = await fetch('/api/git/commit', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message: msg })
+            });
+            const data = await res.json();
+            if (data.success) {
+                showToast('🐙 Thành công', 'Đã push lên GitHub thành công!', 'success');
+                logToConsole('success', 'Git Push Thành công:\n' + data.log);
+                gitCommitMsg.value = '';
+                loadGitStatus();
+            } else {
+                showToast('⚠️ Thất bại', 'Lỗi push code lên GitHub', 'error');
+                logToConsole('error', 'Git Push Lỗi:\n' + (data.log || data.error));
+            }
+        } catch (err) {
+            showToast('⚠️ Lỗi mạng', 'Không thể kết nối API Git', 'error');
+        } finally {
+            btnGitCommit.disabled = false;
+            btnGitCommit.textContent = '🐙 Commit & Push';
+        }
+    });
+}
+
+// 2. KEYBOARD EMULATOR
+// Make screen image focusable so it receives key events
+if (screenImageEl) {
+    screenImageEl.setAttribute('tabindex', '0');
+    screenImageEl.style.outline = 'none'; // remove browser outline
+    
+    screenImageEl.addEventListener('keydown', function(e) {
+        // Prevent default scrolling keys
+        if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Tab'].indexOf(e.code) > -1) {
+            e.preventDefault();
+        }
+
+        if (!selectedDeviceUdid) return;
+
+        let script = '';
+        if (e.key.length === 1) {
+            // Standard alphanumeric / punctuation key
+            const char = e.key.replace(/"/g, '\\"');
+            script = 'typeText("' + char + '")';
+        } else if (e.key === 'Enter') {
+            script = 'typeText("\n")';
+        } else if (e.key === 'Backspace') {
+            script = 'typeText("\b")'; // standard backspace
+        }
+
+        if (script) {
+            const isMultiSync = document.getElementById('chk-multi-sync')?.checked;
+            if (isMultiSync) {
+                connectedDevices.forEach(d => {
+                    sendWs({ action: 'run_script', targetUdid: d.udid, script: script, scriptName: 'key_press.lua' });
+                });
+            } else {
+                sendWs({ action: 'run_script', targetUdid: selectedDeviceUdid, script: script, scriptName: 'key_press.lua' });
+            }
+        }
+    });
+}

@@ -227,6 +227,35 @@ app.get('/api/devices', (req, res) => {
   res.json({ success: true, devices: Object.values(devices).map(d => d.info) });
 });
 
+const { exec } = require('child_process');
+
+// ─── REST API: Git Management ─────────────────────────────────────────────────
+app.get('/api/git/status', (req, res) => {
+  exec('git status --porcelain', (error, stdout, stderr) => {
+    if (error) { return res.json({ success: false, error: error.message }); }
+    const lines = stdout.split('\n').filter(line => line.trim() !== '');
+    const files = lines.map(line => {
+      const status = line.substring(0, 2).trim();
+      const name = line.substring(2).trim();
+      return { status, name };
+    });
+    res.json({ success: true, files });
+  });
+});
+
+app.post('/api/git/commit', (req, res) => {
+  const { message } = req.body;
+  if (!message) return res.status(400).json({ success: false, error: 'Commit message is required' });
+  const safeMessage = message.replace(/"/g, '\\"');
+  
+  exec(`git add . && git commit -m "${safeMessage}" && git push origin main`, (error, stdout, stderr) => {
+    if (error) {
+      return res.json({ success: false, log: stdout + '\n' + stderr, error: error.message });
+    }
+    res.json({ success: true, log: stdout + '\n' + stderr });
+  });
+});
+
 // ─── REST API: Schedules ──────────────────────────────────────────────────────
 app.get('/api/schedules', (req, res) => {
   res.json({ success: true, schedules });

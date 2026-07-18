@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
@@ -34,6 +34,9 @@
                 </button>
                 <button class="activity-btn" data-sidebar="analytics" title="Analytics (Thống kê)">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+                </button>
+                <button class="activity-btn" data-sidebar="git" title="Source Control (Git)">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20"><circle cx="12" cy="18" r="3"/><circle cx="12" cy="6" r="3"/><line x1="12" y1="9" x2="12" y2="15"/></svg>
                 </button>
             </div>
             <div class="activity-bottom">
@@ -146,6 +149,23 @@
                     <div class="stat-card" style="margin-bottom: 12px;">
                         <div class="stat-label">Thời gian chạy (phút):</div>
                         <div class="stat-value" id="stat-run-time">0</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 7. GIT PANEL -->
+            <div class="sidebar-panel" id="panel-git">
+                <div class="panel-header">
+                    <h2>SOURCE CONTROL: GIT</h2>
+                </div>
+                <div style="padding: 12px; display: flex; flex-direction: column; gap: 10px;">
+                    <input type="text" id="git-commit-msg" placeholder="Tin nhắn commit..." class="form-input">
+                    <button class="btn-action success" id="btn-git-commit" style="width: 100%;">🐙 Commit & Push</button>
+                    <div style="margin-top: 10px;">
+                        <span class="status-label" style="font-size: 10px; color: var(--text-muted); text-transform: uppercase;">Trạng thái tệp tin</span>
+                        <div id="git-status-list" style="margin-top: 6px; font-family: monospace; font-size: 10px; display: flex; flex-direction: column; gap: 4px; max-height: 250px; overflow-y: auto;">
+                            <div style="color: var(--text-muted);">Đang tải trạng thái...</div>
+                        </div>
                     </div>
                 </div>
             </div>
