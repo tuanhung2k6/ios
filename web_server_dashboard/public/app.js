@@ -7,6 +7,7 @@ let ws = null;
 let wsReady = false;
 let reconnectAttempt = 0;
 let reconnectTimer = null;
+let monacoEditor = null;
 
 let connectedDevices = [];
 let savedScripts = [];
@@ -446,6 +447,9 @@ function openScript(name) {
     currentScriptName = s.name;
     scriptNameInput.value = s.name;
     codeTextarea.value = s.content;
+    if (monacoEditor) {
+        monacoEditor.setValue(s.content);
+    }
     updateLineNumbers();
     renderScriptList();
     logToConsole('system', `Mở script: ${name}`);
@@ -1321,6 +1325,9 @@ function openScript(name, folder) {
     currentScriptName = s.name;
     scriptNameInput.value = s.name;
     codeTextarea.value = s.content;
+    if (monacoEditor) {
+        monacoEditor.setValue(s.content);
+    }
     updateLineNumbers();
     renderScriptList();
     logToConsole('system', `Mở: ${folder ? folder + '/' : ''}${name}`);
@@ -1583,6 +1590,7 @@ swipe(100, 500, 100, 200, 0.5)
         
         // Relay change events to app logic
         monacoEditor.onDidChangeModelContent(function() {
+            codeTextarea.value = monacoEditor.getValue();
             if (typeof window._onMonacoInput === 'function') {
                 window._onMonacoInput();
             }
