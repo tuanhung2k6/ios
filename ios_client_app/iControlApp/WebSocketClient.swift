@@ -1,4 +1,4 @@
-﻿import Foundation
+import Foundation
 import UIKit
 
 /// WebSocket connection manager connecting iOS client back to the Web Dashboard Server
@@ -236,6 +236,7 @@ class WebSocketClient: NSObject {
                         print("[WebSocketClient] Send failed: \(error)")
                     }
                 }
+                LocalServer.shared.broadcastToWebClients(text: jsonString)
             }
         } catch {
             print("[WebSocketClient] Encoding JSON failed: \(error)")

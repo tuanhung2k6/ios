@@ -141,13 +141,13 @@ class LocalConnection {
         if method == "GET" {
             switch path {
             case "/", "/index.html":
-                sendBase64Response(base64Str: WebAssets.indexHtmlBase64, contentType: "text/html; charset=utf-8")
+                sendStaticResponse(data: WebAssets.indexHtmlData, contentType: "text/html; charset=utf-8")
             case "/style.css":
-                sendBase64Response(base64Str: WebAssets.styleCssBase64, contentType: "text/css")
+                sendStaticResponse(data: WebAssets.styleCssData, contentType: "text/css")
             case "/app.js":
-                sendBase64Response(base64Str: WebAssets.appJsBase64, contentType: "application/javascript")
+                sendStaticResponse(data: WebAssets.appJsData, contentType: "application/javascript")
             case "/vnc_helper.html":
-                sendBase64Response(base64Str: WebAssets.vncHelperBase64, contentType: "text/html; charset=utf-8")
+                sendStaticResponse(data: WebAssets.vncHelperData, contentType: "text/html; charset=utf-8")
                 
             case "/api/server-info":
                 let ip = WebSocketClient.shared.getWiFiAddress() ?? "127.0.0.1"
@@ -234,14 +234,11 @@ class LocalConnection {
         }
     }
     
-    private func sendBase64Response(base64Str: String, contentType: String) {
-        guard let data = Data(base64Encoded: base64Str) else { return }
+    private func sendStaticResponse(data: Data, contentType: String) {
         let header = "HTTP/1.1 200 OK\r\nContent-Type: \(contentType)\r\nContent-Length: \(data.count)\r\nConnection: close\r\n\r\n"
         var res = header.data(using: .utf8) ?? Data()
         res.append(data)
-        connection.send(content: res, completion: .contentProcessed({ [weak self] _ in
-            self?.close()
-        }))
+        connection.send(content: res, contentContext: .defaultMessage, isComplete: true, completion: .contentProcessed({ _ in }))
     }
     
     private func sendJsonResponse(_ json: String) {
@@ -249,18 +246,14 @@ class LocalConnection {
         let header = "HTTP/1.1 200 OK\r\nContent-Type: application/json; charset=utf-8\r\nContent-Length: \(data.count)\r\nAccess-Control-Allow-Origin: *\r\nConnection: close\r\n\r\n"
         var res = header.data(using: .utf8) ?? Data()
         res.append(data)
-        connection.send(content: res, completion: .contentProcessed({ [weak self] _ in
-            self?.close()
-        }))
+        connection.send(content: res, contentContext: .defaultMessage, isComplete: true, completion: .contentProcessed({ _ in }))
     }
     
     private func sendNotFound() {
         let body = "404 Not Found"
         let header = "HTTP/1.1 404 Not Found\r\nContent-Type: text/plain\r\nContent-Length: \(body.count)\r\nConnection: close\r\n\r\n"
         let res = (header + body).data(using: .utf8) ?? Data()
-        connection.send(content: res, completion: .contentProcessed({ [weak self] _ in
-            self?.close()
-        }))
+        connection.send(content: res, contentContext: .defaultMessage, isComplete: true, completion: .contentProcessed({ _ in }))
     }
     
     // MARK: - WebSocket Handshake
