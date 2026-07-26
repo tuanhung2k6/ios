@@ -70,6 +70,7 @@ function connectWebSocket() {
         setWsStatus(true);
         logToConsole('system', 'Kết nối server thành công.');
         ws.send(JSON.stringify({ clientType: 'web_ui' }));
+        loadDevices();
     };
 
     ws.onmessage = ({ data }) => {
@@ -215,6 +216,22 @@ function renderDeviceList() {
         selectDevice(connectedDevices[0].udid);
     }
     updateActionButtons();
+}
+
+async function loadDevices() {
+    try {
+        const res = await fetch('/api/devices');
+        const data = await res.json();
+        if (data.success && Array.isArray(data.devices) && data.devices.length > 0) {
+            connectedDevices = data.devices;
+            renderDeviceList();
+            if (!selectedDeviceUdid && connectedDevices.length > 0) {
+                selectDevice(connectedDevices[0].udid);
+            }
+        }
+    } catch (e) {
+        console.error('Load devices error:', e);
+    }
 }
 
 function createDeviceCard(device) {
@@ -1425,6 +1442,7 @@ handleServerMessage = function(msg) {
 function initApp() {
     setGridCols(2);
     connectWebSocket();
+    loadDevices();
     loadScripts();
     loadSchedules();
     loadAnalytics();
