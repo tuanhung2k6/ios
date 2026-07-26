@@ -259,12 +259,15 @@ class LocalConnection {
     // MARK: - WebSocket Handshake
     
     private func handleWebSocketHandshake(requestStr: String) {
-        // Extract Sec-WebSocket-Key
+        // Extract Sec-WebSocket-Key (case-insensitive for Chrome/Edge/Safari)
         var secKey = ""
         let lines = requestStr.components(separatedBy: "\r\n")
         for line in lines {
-            if line.hasPrefix("Sec-WebSocket-Key:") {
-                secKey = line.replacingOccurrences(of: "Sec-WebSocket-Key:", with: "").trimmingCharacters(in: .whitespaces)
+            if line.lowercased().hasPrefix("sec-websocket-key:") {
+                let parts = line.components(separatedBy: ":")
+                if parts.count >= 2 {
+                    secKey = parts[1].trimmingCharacters(in: .whitespacesAndNewlines)
+                }
             }
         }
         
@@ -294,9 +297,9 @@ class LocalConnection {
         connection.send(content: resData, completion: .contentProcessed({ [weak self] error in
             if error == nil {
                 self?.isWebSocket = true
-                print("[LocalConnection] WebSocket Upgrade Successful!")
+                print("[LocalConnection] Embedded WebSocket Upgrade Successful!")
                 
-                // Immediately send init message to mimic standard server
+                // Immediately send init message with device details
                 self?.sendInitData()
             }
         }))
@@ -312,7 +315,7 @@ class LocalConnection {
         
         let initMsg = """
         {"type":"init","devices":[
-            {"udid":"\(udid)","name":"\(name) (Local)","model":"\(model)","ip":"\(ip)","ios_version":"\(version)","battery":\(battery >= 0 ? battery : 100),"vnc_port":5900}
+            {"udid":"\(udid)","name":"\(name)","model":"\(model)","ip":"\(ip)","ios_version":"\(version)","battery":\(battery >= 0 ? battery : 100),"vnc_port":5900,"status":"online"}
         ],"serverInfo":{"ip":"\(ip)","port":9898}}
         """
         sendWebSocketText(initMsg)
@@ -336,8 +339,12 @@ class LocalConnection {
             payloadLen = Int(data[2]) << 8 | Int(data[3])
             offset = 4
         } else if payloadLen == 127 {
-            // Very large frame, skip for simple controls
-            return
+            guard data.count >= 10 else { return }
+            var len64: UInt64 = 0
+            let lenData = data.subdata(in: 2..<10)
+            _ = withUnsafeMutableBytes(of: &len64) { lenData.copyBytes(to: $0) }
+            payloadLen = Int(UInt64(bigEndian: len64))
+            offset = 10
         }
         
         var maskingKey = [UInt8](repeating: 0, count: 4)
@@ -354,7 +361,6 @@ class LocalConnection {
         var payload = data.subdata(in: offset..<(offset + payloadLen))
         
         if isMasked {
-            // Unmask payload bytes
             for i in 0..<payload.count {
                 payload[i] ^= maskingKey[i % 4]
             }
@@ -373,10 +379,16 @@ class LocalConnection {
         guard let data = text.data(using: .utf8),
               let json = try? JSONSerialization.jsonObject(with: data, options: []) as? [String: Any] else { return }
         
-        let action = json["action"] as? String
+        let action = json["action"] as? String ?? json["type"] as? String
+        let clientType = json["clientType"] as? String
         
-        if action == "run_script" {
-            if let script = json["script"] as? String, let scriptName = json["scriptName"] as? String {
+        if clientType == "web_ui" || action == "web_ui" {
+            DispatchQueue.main.async {
+                self.sendInitData()
+            }
+        } else if action == "run_script" {
+            if let script = json["script"] as? String {
+                let scriptName = json["scriptName"] as? String ?? "unnamed.lua"
                 DispatchQueue.main.async {
                     WebSocketClient.shared.runScript(content: script, name: scriptName)
                 }
@@ -387,9 +399,39 @@ class LocalConnection {
             }
         } else if action == "request_screenshot" {
             DispatchQueue.main.async {
-                WebSocketClient.shared.captureAndSendScreenshot()
+                self.sendScreenshotToWeb()
+            }
+        } else if action == "direct_tap" {
+            if let x = json["x"] as? Double, let y = json["y"] as? Double {
+                DispatchQueue.main.async {
+                    TouchSimulator.shared.tap(x: CGFloat(x), y: CGFloat(y))
+                }
+            }
+        } else if action == "direct_swipe" {
+            if let x1 = json["x1"] as? Double, let y1 = json["y1"] as? Double,
+               let x2 = json["x2"] as? Double, let y2 = json["y2"] as? Double {
+                let duration = json["duration"] as? Double ?? 0.3
+                DispatchQueue.main.async {
+                    TouchSimulator.shared.swipe(fromX: CGFloat(x1), fromY: CGFloat(y1), toX: CGFloat(x2), toY: CGFloat(y2), duration: duration)
+                }
             }
         }
+    }
+
+    private func sendScreenshotToWeb() {
+        guard let window = UIApplication.shared.windows.first else { return }
+        let renderer = UIGraphicsImageRenderer(bounds: window.bounds)
+        let image = renderer.image { ctx in
+            window.drawHierarchy(in: window.bounds, afterScreenUpdates: true)
+        }
+        guard let jpegData = image.jpegData(compressionQuality: 0.5) else { return }
+        let base64 = jpegData.base64EncodedString()
+        let udid = UserDefaults.standard.string(forKey: "iControl_device_udid") ?? "local_device"
+        
+        let payload = """
+        {"type":"device_screenshot","udid":"\(udid)","imageBase64":"\(base64)"}
+        """
+        sendWebSocketText(payload)
     }
     
     func sendWebSocketText(_ text: String) {
@@ -406,9 +448,15 @@ class LocalConnection {
             frame.append(UInt8((len >> 8) & 0xFF))
             frame.append(UInt8(len & 0xFF))
         } else {
-            // Too large to handle simply, skip
-            return
+            // Standard WebSocket 64-bit length frame
+            frame.append(127)
+            var size = UInt64(len).bigEndian
+            withUnsafeBytes(of: &size) { frame.append(contentsOf: $0) }
         }
+        
+        frame.append(textData)
+        connection.send(content: frame, completion: .contentProcessed({ _ in }))
+    }
         
         frame.append(textData)
         connection.send(content: frame, completion: .contentProcessed({ _ in }))
