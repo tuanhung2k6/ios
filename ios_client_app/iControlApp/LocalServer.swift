@@ -457,10 +457,6 @@ class LocalConnection {
         frame.append(textData)
         connection.send(content: frame, completion: .contentProcessed({ _ in }))
     }
-        
-        frame.append(textData)
-        connection.send(content: frame, completion: .contentProcessed({ _ in }))
-    }
     
     func close() {
         connection.cancel()
