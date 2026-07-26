@@ -139,6 +139,30 @@ class WebSocketClient: NSObject {
                     DispatchQueue.main.async { self.stopCurrentScript() }
                 } else if type == "request_screenshot" {
                     DispatchQueue.main.async { self.captureAndSendScreenshot() }
+                } else if type == "direct_tap" {
+                    if let x = json["x"] as? Double, let y = json["y"] as? Double {
+                        DispatchQueue.main.async {
+                            TouchSimulator.shared.tap(x: CGFloat(x), y: CGFloat(y))
+                            self.sendLog(message: "Direct Tap: (\(Int(x)), \(Int(y)))")
+                        }
+                    }
+                } else if type == "direct_swipe" {
+                    if let x1 = json["x1"] as? Double, let y1 = json["y1"] as? Double,
+                       let x2 = json["x2"] as? Double, let y2 = json["y2"] as? Double {
+                        let duration = json["duration"] as? Double ?? 0.3
+                        DispatchQueue.main.async {
+                            TouchSimulator.shared.swipe(fromX: CGFloat(x1), fromY: CGFloat(y1), toX: CGFloat(x2), toY: CGFloat(y2), duration: duration)
+                            self.sendLog(message: "Direct Swipe: (\(Int(x1)), \(Int(y1))) ➔ (\(Int(x2)), \(Int(y2)))")
+                        }
+                    }
+                } else if type == "direct_touch_down" {
+                    if let x = json["x"] as? Double, let y = json["y"] as? Double {
+                        DispatchQueue.main.async { TouchSimulator.shared.touchDown(x: CGFloat(x), y: CGFloat(y)) }
+                    }
+                } else if type == "direct_touch_up" {
+                    if let x = json["x"] as? Double, let y = json["y"] as? Double {
+                        DispatchQueue.main.async { TouchSimulator.shared.touchUp(x: CGFloat(x), y: CGFloat(y)) }
+                    }
                 }
             }
         } catch {
@@ -311,60 +335,97 @@ class WebSocketClient: NSObject {
             return
         }
         
-        let line = scriptLines[index].trimmingCharacters(in: .whitespacesAndNewlines)
+        var line = scriptLines[index].trimmingCharacters(in: .whitespacesAndNewlines)
         
-        // Skip comments and empty lines
-        if line.isEmpty || line.hasPrefix("--") || line.hasPrefix("local ") && !line.contains("require") {
-            // Immediately execute next line
+        // Strip trailing inline comments if present
+        if let commentRange = line.range(of: "--") {
+            line = String(line[..<commentRange.lowerBound]).trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        
+        // Skip empty lines or pure comment lines
+        if line.isEmpty || line.hasPrefix("local ") && !line.contains("(") {
             self.executeLine(at: index + 1)
             return
         }
         
-        var delay: Double = 0.1 // Default delay between lines
+        var delay: Double = 0.05 // Swift micro delay default
         
-        if line.contains("sleep(") {
-            let params = parseParameters(line, prefix: "sleep(")
+        if line.contains("mSleep(") {
+            let params = parseParamsFromLine(line, funcName: "mSleep")
+            if let val = params.first, let sleepMs = Double(val) {
+                delay = sleepMs / 1000.0
+                self.sendLog(message: "Chờ \(Int(sleepMs))ms")
+            }
+        } else if line.contains("sleep(") || line.contains("delay(") {
+            let funcName = line.contains("sleep") ? "sleep" : "delay"
+            let params = parseParamsFromLine(line, funcName: funcName)
             if let val = params.first, let sleepTime = Double(val) {
-                delay = sleepTime
-                self.sendLog(message: "Chờ \(sleepTime) giây")
+                // If delay() is given in ms (> 50), treat as ms, otherwise sec
+                delay = (funcName == "delay" && sleepTime > 50) ? (sleepTime / 1000.0) : sleepTime
+                self.sendLog(message: "Chờ \(delay) giây")
             }
-        } else if line.contains("tap(") {
-            let coords = parseParameters(line, prefix: "tap(")
+        } else if line.contains("tap(") || line.contains("click(") || line.contains("touch(") {
+            let funcName = line.contains("tap(") ? "tap" : (line.contains("click(") ? "click" : "touch")
+            let coords = parseParamsFromLine(line, funcName: funcName)
             if coords.count >= 2, let x = Double(coords[0]), let y = Double(coords[1]) {
-                self.sendLog(message: "Click: \(x), \(y)")
+                self.sendLog(message: "Tap: (\(Int(x)), \(Int(y)))")
                 TouchSimulator.shared.tap(x: CGFloat(x), y: CGFloat(y))
-                delay = 0.3
+                delay = 0.2
             }
-        } else if line.contains("swipe(") {
-            let params = parseParameters(line, prefix: "swipe(")
+        } else if line.contains("swipe(") || line.contains("drag(") {
+            let funcName = line.contains("swipe") ? "swipe" : "drag"
+            let params = parseParamsFromLine(line, funcName: funcName)
             if params.count >= 4,
                let x1 = Double(params[0]), let y1 = Double(params[1]),
                let x2 = Double(params[2]), let y2 = Double(params[3]) {
                 let duration = params.count >= 5 ? (Double(params[4]) ?? 0.3) : 0.3
-                self.sendLog(message: "Vuốt từ (\(x1), \(y1)) tới (\(x2), \(y2))")
+                self.sendLog(message: "Vuốt: (\(Int(x1)), \(Int(y1))) ➔ (\(Int(x2)), \(Int(y2)))")
                 TouchSimulator.shared.swipe(fromX: CGFloat(x1), fromY: CGFloat(y1), toX: CGFloat(x2), toY: CGFloat(y2), duration: duration)
-                delay = duration + 0.3
+                delay = duration + 0.2
             }
-        } else if line.contains("longPress(") {
-            let params = parseParameters(line, prefix: "longPress(")
+        } else if line.contains("longPress(") || line.contains("press(") {
+            let funcName = line.contains("longPress") ? "longPress" : "press"
+            let params = parseParamsFromLine(line, funcName: funcName)
             if params.count >= 2, let x = Double(params[0]), let y = Double(params[1]) {
                 let duration = params.count >= 3 ? (Double(params[2]) ?? 1.0) : 1.0
-                self.sendLog(message: "Nhấn giữ tại (\(x), \(y)) trong \(duration)s")
+                self.sendLog(message: "Nhấn giữ tại (\(Int(x)), \(Int(y))) trong \(duration)s")
                 TouchSimulator.shared.touchDown(x: CGFloat(x), y: CGFloat(y))
                 DispatchQueue.main.asyncAfter(deadline: .now() + duration) {
                     TouchSimulator.shared.touchUp(x: CGFloat(x), y: CGFloat(y))
                 }
-                delay = duration + 0.3
+                delay = duration + 0.2
             }
-        } else if line.contains("log(") || line.contains("print(") {
-            let prefix = line.contains("log(") ? "log(" : "print("
-            let params = parseParameters(line, prefix: prefix)
+        } else if line.contains("touchDown(") {
+            let params = parseParamsFromLine(line, funcName: "touchDown")
+            if params.count >= 2, let x = Double(params[0]), let y = Double(params[1]) {
+                let fingerId = params.count >= 3 ? (Int(params[2]) ?? 1) : 1
+                TouchSimulator.shared.touchDown(x: CGFloat(x), y: CGFloat(y), fingerId: fingerId)
+                delay = 0.05
+            }
+        } else if line.contains("touchMove(") {
+            let params = parseParamsFromLine(line, funcName: "touchMove")
+            if params.count >= 2, let x = Double(params[0]), let y = Double(params[1]) {
+                let fingerId = params.count >= 3 ? (Int(params[2]) ?? 1) : 1
+                TouchSimulator.shared.touchMove(x: CGFloat(x), y: CGFloat(y), fingerId: fingerId)
+                delay = 0.05
+            }
+        } else if line.contains("touchUp(") {
+            let params = parseParamsFromLine(line, funcName: "touchUp")
+            if params.count >= 2, let x = Double(params[0]), let y = Double(params[1]) {
+                let fingerId = params.count >= 3 ? (Int(params[2]) ?? 1) : 1
+                TouchSimulator.shared.touchUp(x: CGFloat(x), y: CGFloat(y), fingerId: fingerId)
+                delay = 0.05
+            }
+        } else if line.contains("log(") || line.contains("print(") || line.contains("sys.log(") {
+            let funcName = line.contains("sys.log") ? "sys.log" : (line.contains("log") ? "log" : "print")
+            let params = parseParamsFromLine(line, funcName: funcName)
             if let msg = params.first {
                 let cleanMsg = msg.replacingOccurrences(of: "\"", with: "").replacingOccurrences(of: "'", with: "")
                 self.sendLog(message: cleanMsg)
             }
-        } else if line.contains("appRun(") {
-            let params = parseParameters(line, prefix: "appRun(")
+        } else if line.contains("appRun(") || line.contains("openApp(") {
+            let funcName = line.contains("appRun") ? "appRun" : "openApp"
+            let params = parseParamsFromLine(line, funcName: funcName)
             if let bundleId = params.first {
                 let cleanId = bundleId.replacingOccurrences(of: "\"", with: "").replacingOccurrences(of: "'", with: "")
                 self.sendLog(message: "Mở ứng dụng: \(cleanId)")
@@ -373,12 +434,12 @@ class WebSocketClient: NSObject {
                         UIApplication.shared.open(URL(string: "https://www.apple.com")!, options: [:], completionHandler: nil)
                     }
                 }
-                delay = 1.8
+                delay = 1.5
             }
         }
         
         // Execute next line after the calculated delay
-        DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + max(0.02, delay)) {
             self.executeLine(at: index + 1)
         }
     }
@@ -392,12 +453,12 @@ class WebSocketClient: NSObject {
         }
     }
     
-    private func parseParameters(_ line: String, prefix: String) -> [String] {
-        guard let startIdx = line.range(of: prefix)?.upperBound else { return [] }
-        guard let endIdx = line.range(of: ")", options: .backwards)?.lowerBound else { return [] }
-        
-        let subStr = String(line[startIdx..<endIdx])
-        return subStr.components(separatedBy: ",").map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+    private func parseParamsFromLine(_ line: String, funcName: String) -> [String] {
+        guard let openParen = line.range(of: "\(funcName)(")?.upperBound else { return [] }
+        let rest = String(line[openParen...])
+        guard let closeParen = rest.range(of: ")")?.lowerBound else { return [] }
+        let inner = String(rest[..<closeParen])
+        return inner.components(separatedBy: ",").map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
     }
     
     // MARK: - Helper Local IP

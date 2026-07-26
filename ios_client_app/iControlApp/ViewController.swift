@@ -1,4 +1,4 @@
-﻿import UIKit
+import UIKit
 import Foundation
 
 // MARK: - Premium ViewController
@@ -36,15 +36,15 @@ class ViewController: UIViewController {
     private var batteryTimer: Timer?
     private var pulseTimer: Timer?
 
-    // Colors
-    private let bgColor = UIColor(red: 8/255, green: 11/255, blue: 20/255, alpha: 1)
-    private let surfaceColor = UIColor(red: 13/255, green: 18/255, blue: 32/255, alpha: 1)
-    private let cardColor = UIColor(red: 18/255, green: 24/255, blue: 42/255, alpha: 1)
-    private let accent = UIColor(red: 99/255, green: 102/255, blue: 241/255, alpha: 1)
-    private let emerald = UIColor(red: 16/255, green: 185/255, blue: 129/255, alpha: 1)
+    // Titanium & Emerald Theme Colors
+    private let bgColor = UIColor(red: 9/255, green: 13/255, blue: 22/255, alpha: 1)
+    private let surfaceColor = UIColor(red: 15/255, green: 22/255, blue: 35/255, alpha: 1)
+    private let cardColor = UIColor(red: 20/255, green: 29/255, blue: 45/255, alpha: 1)
+    private let accent = UIColor(red: 99/255, green: 102/255, blue: 241/255, alpha: 1) // Electric Indigo
+    private let emerald = UIColor(red: 16/255, green: 185/255, blue: 129/255, alpha: 1) // Glowing Emerald
     private let red = UIColor(red: 239/255, green: 68/255, blue: 68/255, alpha: 1)
-    private let textPrimary = UIColor(red: 241/255, green: 245/255, blue: 249/255, alpha: 1)
-    private let textMuted = UIColor(red: 100/255, green: 116/255, blue: 139/255, alpha: 1)
+    private let textPrimary = UIColor(red: 248/255, green: 250/255, blue: 252/255, alpha: 1)
+    private let textMuted = UIColor(red: 148/255, green: 163/255, blue: 184/255, alpha: 1)
 
     override func viewDidLoad() {
         super.viewDidLoad()

@@ -1,4 +1,4 @@
-﻿const express = require('express');
+const express = require('express');
 const http = require('http');
 const WebSocket = require('ws');
 const path = require('path');
@@ -506,6 +506,24 @@ wss.on('connection', (ws, req) => {
       } else if (data.action === 'request_screenshot') {
         if (target && target.ws.readyState === WebSocket.OPEN) {
           target.ws.send(JSON.stringify({ type: 'request_screenshot' }));
+        }
+      } else if (data.action === 'direct_tap') {
+        if (target && target.ws.readyState === WebSocket.OPEN) {
+          target.ws.send(JSON.stringify({ type: 'direct_tap', x: data.x, y: data.y }));
+          recordAnalytics(targetUdid, 'tap');
+        }
+      } else if (data.action === 'direct_swipe') {
+        if (target && target.ws.readyState === WebSocket.OPEN) {
+          target.ws.send(JSON.stringify({ type: 'direct_swipe', x1: data.x1, y1: data.y1, x2: data.x2, y2: data.y2, duration: data.duration }));
+          recordAnalytics(targetUdid, 'swipe');
+        }
+      } else if (data.action === 'direct_touch_down') {
+        if (target && target.ws.readyState === WebSocket.OPEN) {
+          target.ws.send(JSON.stringify({ type: 'direct_touch_down', x: data.x, y: data.y }));
+        }
+      } else if (data.action === 'direct_touch_up') {
+        if (target && target.ws.readyState === WebSocket.OPEN) {
+          target.ws.send(JSON.stringify({ type: 'direct_touch_up', x: data.x, y: data.y }));
         }
       }
       return;

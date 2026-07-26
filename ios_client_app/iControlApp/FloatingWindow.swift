@@ -129,7 +129,10 @@ class FloatingWindow: UIWindow {
     @objc private func toggleMinimize() {
         isMinimized.toggle()
         
-        UIView.animate(withDuration: 0.3, delay: 0, options: .curveEaseInOut, animations: {
+        let impact = UIImpactFeedbackGenerator(style: .medium)
+        impact.impactOccurred()
+        
+        UIView.animate(withDuration: 0.35, delay: 0, usingSpringWithDamping: 0.85, initialSpringVelocity: 0.5, options: .curveEaseInOut, animations: {
             if self.isMinimized {
                 self.frame.size = self.minimizedSize
                 self.logTextView.isHidden = true
@@ -149,6 +152,8 @@ class FloatingWindow: UIWindow {
     }
     
     @objc private func stopBtnPressed() {
+        let impact = UIImpactFeedbackGenerator(style: .heavy)
+        impact.impactOccurred()
         print("[FloatingHUD] Stop requested.")
         self.addLog("Script execution manually terminated.")
         WebSocketClient.shared.sendDeviceStatus(status: "online")

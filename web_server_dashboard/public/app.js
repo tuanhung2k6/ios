@@ -345,54 +345,75 @@ function activateTab(name) {
     document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id === `tab-${name}`));
 }
 
-// ── Screen / Screenshot ────────────────────────────────
-function handleScreenshotReceived(msg) {
-    if (!msg.imageBase64) return;
-    screenPlaceholderEl.style.display = 'none';
-    screenImageEl.style.display = 'block';
-    screenImageEl.src = `data:image/jpeg;base64,${msg.imageBase64}`;
+// ── Screen / Screenshot Stream Optimization ─────────────
+let isAwaitingFrame = false;
 
-    // FPS counter
-    screenshotCount++;
-    const now = Date.now();
-    if (now - screenshotLastTime >= 1000) {
-        screenFpsEl.textContent = `${screenshotCount} fps`;
-        screenshotCount = 0;
-        screenshotLastTime = now;
+function requestNextFrame() {
+    if (!isStreaming || !selectedDeviceUdid || !wsReady || isAwaitingFrame) return;
+    isAwaitingFrame = true;
+    sendWs({ action: 'request_screenshot', targetUdid: selectedDeviceUdid });
+}
+
+function handleScreenshotReceived(msg) {
+    if (!msg.imageBase64) {
+        isAwaitingFrame = false;
+        return;
+    }
+    if (screenPlaceholderEl) screenPlaceholderEl.style.display = 'none';
+    if (screenImageEl) {
+        screenImageEl.style.display = 'block';
+        screenImageEl.onload = () => {
+            isAwaitingFrame = false;
+            screenshotCount++;
+            const now = Date.now();
+            if (now - screenshotLastTime >= 1000) {
+                if (screenFpsEl) screenFpsEl.textContent = `${screenshotCount} fps`;
+                screenshotCount = 0;
+                screenshotLastTime = now;
+            }
+            if (isStreaming) {
+                setTimeout(requestNextFrame, 150); // smooth 150ms frame throttle
+            }
+        };
+        screenImageEl.onerror = () => {
+            isAwaitingFrame = false;
+        };
+        screenImageEl.src = `data:image/jpeg;base64,${msg.imageBase64}`;
     }
 }
 
-screenshotBtn.addEventListener('click', () => {
-    if (!selectedDeviceUdid) {
-        logToConsole('warn', 'Chọn thiết bị trước khi chụp màn hình');
-        return;
-    }
-    sendWs({ action: 'request_screenshot', targetUdid: selectedDeviceUdid });
-    logToConsole('system', 'Yêu cầu chụp màn hình...');
-    activateTab('screen');
-});
-
-streamToggleBtn.addEventListener('click', () => {
-    if (!selectedDeviceUdid) return;
-    isStreaming = !isStreaming;
-    streamToggleBtn.innerHTML = isStreaming
-        ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg> Tắt Stream`
-        : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg> Bật Stream`;
-
-    if (isStreaming) {
-        logToConsole('success', 'Bắt đầu stream màn hình...');
+if (screenshotBtn) {
+    screenshotBtn.addEventListener('click', () => {
+        if (!selectedDeviceUdid) {
+            logToConsole('warn', 'Chọn thiết bị trước khi chụp màn hình');
+            return;
+        }
+        sendWs({ action: 'request_screenshot', targetUdid: selectedDeviceUdid });
+        logToConsole('system', 'Yêu cầu chụp màn hình...');
         activateTab('screen');
-        streamTimer = setInterval(() => {
-            if (selectedDeviceUdid && wsReady) {
-                sendWs({ action: 'request_screenshot', targetUdid: selectedDeviceUdid });
-            }
-        }, 500);
-    } else {
-        clearInterval(streamTimer);
-        screenFpsEl.textContent = '';
-        logToConsole('system', 'Đã tắt stream màn hình.');
-    }
-});
+    });
+}
+
+if (streamToggleBtn) {
+    streamToggleBtn.addEventListener('click', () => {
+        if (!selectedDeviceUdid) return;
+        isStreaming = !isStreaming;
+        streamToggleBtn.innerHTML = isStreaming
+            ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg> Tắt Stream`
+            : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg> Bật Stream`;
+
+        if (isStreaming) {
+            logToConsole('success', 'Bắt đầu stream màn hình (Adaptive)...');
+            activateTab('screen');
+            isAwaitingFrame = false;
+            requestNextFrame();
+        } else {
+            isAwaitingFrame = false;
+            if (screenFpsEl) screenFpsEl.textContent = '';
+            logToConsole('system', 'Đã tắt stream màn hình.');
+        }
+    });
+}
 
 function openVNC(udid) {
     const device = connectedDevices.find(d => d.udid === udid);
@@ -631,11 +652,12 @@ function logToConsole(type, message, time) {
     line.appendChild(timeSpan);
     line.appendChild(msgSpan);
 
+    if (!consoleLogsEl) return;
     consoleLogsEl.appendChild(line);
     consoleLogsEl.scrollTop = consoleLogsEl.scrollHeight;
 
-    // Limit to 500 lines
-    while (consoleLogsEl.children.length > 500) {
+    // Limit to 200 lines to prevent DOM overhead and lag
+    while (consoleLogsEl.children.length > 200) {
         consoleLogsEl.removeChild(consoleLogsEl.firstChild);
     }
 }
@@ -2581,3 +2603,77 @@ window.quickLock = function() {
     sendWs({ action: 'run_script', targetUdid: selectedDeviceUdid, script: script, scriptName: 'lock.lua' });
     showToast('🔒 Phím cứng', 'Gửi lệnh khóa màn hình / nguồn', 'info');
 };
+
+// ── Direct Interactive Live Mirror Screen Control ─────────────────────
+function createTouchRipple(container, clientX, clientY) {
+    const rect = container.getBoundingClientRect();
+    const ripple = document.createElement('div');
+    ripple.className = 'touch-ripple';
+    ripple.style.left = `${clientX - rect.left}px`;
+    ripple.style.top = `${clientY - rect.top}px`;
+    container.appendChild(ripple);
+    setTimeout(() => ripple.remove(), 450);
+}
+
+function setupScreenDirectControl() {
+    const screenImg = document.getElementById('screen-image');
+    const containerBox = document.getElementById('screen-container-box');
+    if (!screenImg || !containerBox) return;
+
+    let isDragging = false;
+    let startX = 0, startY = 0;
+    let startTime = 0;
+
+    screenImg.addEventListener('mousedown', (e) => {
+        if (!selectedDeviceUdid) return;
+        isDragging = true;
+        startTime = Date.now();
+        const rect = screenImg.getBoundingClientRect();
+        
+        // Scale to logical iOS screen dimensions
+        const scaleX = (screenImg.naturalWidth || 375) / rect.width;
+        const scaleY = (screenImg.naturalHeight || 812) / rect.height;
+        
+        startX = Math.round((e.clientX - rect.left) * scaleX);
+        startY = Math.round((e.clientY - rect.top) * scaleY);
+    });
+
+    screenImg.addEventListener('mouseup', (e) => {
+        if (!isDragging || !selectedDeviceUdid) return;
+        isDragging = false;
+        const rect = screenImg.getBoundingClientRect();
+        const scaleX = (screenImg.naturalWidth || 375) / rect.width;
+        const scaleY = (screenImg.naturalHeight || 812) / rect.height;
+        
+        const endX = Math.round((e.clientX - rect.left) * scaleX);
+        const endY = Math.round((e.clientY - rect.top) * scaleY);
+        const dist = Math.hypot(endX - startX, endY - startY);
+        const duration = Math.min(1.0, Math.max(0.15, (Date.now() - startTime) / 1000.0));
+
+        // Create visual touch ripple
+        createTouchRipple(containerBox, e.clientX, e.clientY);
+
+        if (dist < 10) {
+            // Send direct tap
+            sendWs({ action: 'direct_tap', targetUdid: selectedDeviceUdid, x: startX, y: startY });
+            logToConsole('info', `👆 Live Tap: (${startX}, ${startY})`);
+            showToast('👆 Direct Tap', `Tap tại (${startX}, ${startY})`, 'success');
+        } else {
+            // Send direct swipe
+            sendWs({ action: 'direct_swipe', targetUdid: selectedDeviceUdid, x1: startX, y1: startY, x2: endX, y2: endY, duration: duration });
+            logToConsole('info', `↔️ Live Swipe: (${startX}, ${startY}) ➔ (${endX}, ${endY})`);
+            showToast('↔️ Direct Swipe', `Vuốt (${startX}, ${startY}) ➔ (${endX}, ${endY})`, 'info');
+        }
+    });
+
+    screenImg.addEventListener('mouseleave', () => {
+        isDragging = false;
+    });
+}
+
+// Auto setup on load
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', setupScreenDirectControl);
+} else {
+    setupScreenDirectControl();
+}
