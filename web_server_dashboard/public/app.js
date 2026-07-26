@@ -171,38 +171,42 @@ function handleServerMessage(msg) {
 
 // ── Device List Rendering ──────────────────────────────
 function renderDeviceList() {
-    deviceCountEl.textContent = connectedDevices.length;
+    if (deviceCountEl) deviceCountEl.textContent = connectedDevices.length;
     const prevSelected = selectedDeviceUdid;
 
-    // Rebuild dropdown
-    selectTargetEl.innerHTML = '<option value="">— Chọn thiết bị —</option>';
-    connectedDevices.forEach(d => {
-        const opt = document.createElement('option');
-        opt.value = d.udid;
-        opt.textContent = `${d.name} (${d.ip})`;
-        if (d.udid === prevSelected) opt.selected = true;
-        selectTargetEl.appendChild(opt);
-    });
-
-    // Render sidebar cards
-    if (connectedDevices.length === 0) {
-        deviceListEl.innerHTML = `
-            <div class="empty-state">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="32" height="32" style="opacity:0.3"><rect x="5" y="2" width="14" height="20" rx="3"/></svg>
-                <p>Chưa có thiết bị nào kết nối</p>
-                <small>Mở app iControl trên iPhone</small>
-            </div>`;
-        selectedDeviceUdid = null;
-        updateActionButtons();
-        renderDeviceInfoPanel();
-        return;
+    // Rebuild dropdown if present
+    if (selectTargetEl) {
+        selectTargetEl.innerHTML = '<option value="">— Chọn thiết bị —</option>';
+        connectedDevices.forEach(d => {
+            const opt = document.createElement('option');
+            opt.value = d.udid;
+            opt.textContent = `${d.name} (${d.ip})`;
+            if (d.udid === prevSelected) opt.selected = true;
+            selectTargetEl.appendChild(opt);
+        });
     }
 
-    deviceListEl.innerHTML = '';
-    connectedDevices.forEach(device => {
-        const card = createDeviceCard(device);
-        deviceListEl.appendChild(card);
-    });
+    // Render sidebar cards
+    if (deviceListEl) {
+        if (connectedDevices.length === 0) {
+            deviceListEl.innerHTML = `
+                <div class="empty-state">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="32" height="32" style="opacity:0.3"><rect x="5" y="2" width="14" height="20" rx="3"/></svg>
+                    <p>Chưa có thiết bị nào kết nối</p>
+                    <small>Mở app iControl trên iPhone nhập IP máy tính</small>
+                </div>`;
+            selectedDeviceUdid = null;
+            updateActionButtons();
+            renderDeviceInfoPanel();
+            return;
+        }
+
+        deviceListEl.innerHTML = '';
+        connectedDevices.forEach(device => {
+            const card = createDeviceCard(device);
+            deviceListEl.appendChild(card);
+        });
+    }
 
     if (prevSelected && connectedDevices.some(d => d.udid === prevSelected)) {
         selectedDeviceUdid = prevSelected;
@@ -1423,17 +1427,23 @@ handleServerMessage = function(msg) {
     _origHandleMsg(msg);
 }
 
-// ── Bootstrap ──────────────────────────────────────────
-setGridCols(2);
-connectWebSocket();
-loadScripts();
-loadSchedules();
-loadAnalytics();
-loadServerInfo();
-updateLineNumbers();
+// ── Bootstrap Initialization ───────────────────────────
+function initApp() {
+    setGridCols(2);
+    connectWebSocket();
+    loadScripts();
+    loadSchedules();
+    loadAnalytics();
+    loadServerInfo();
+    updateLineNumbers();
+    activateTab('editor');
+}
 
-// First tab active = editor
-activateTab('editor');
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initApp);
+} else {
+    initApp();
+}
 
 // Automatically update Sileo repo URL display in instructions
 const repoUrlEl = document.getElementById('repo-url-display');

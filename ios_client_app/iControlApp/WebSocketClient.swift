@@ -65,6 +65,9 @@ class WebSocketClient: NSObject {
         webSocket = session.webSocketTask(with: url)
         webSocket?.resume()
         listenForMessages()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { [weak self] in
+            self?.registerDevice()
+        }
     }
     
     private func scheduleReconnect() {
