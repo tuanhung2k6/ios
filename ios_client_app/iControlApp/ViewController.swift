@@ -1,7 +1,7 @@
 import UIKit
 import Foundation
 
-// MARK: - Premium ViewController
+// MARK: - Premium Ultra-Modern ViewController
 class ViewController: UIViewController {
     
     // ─── UI Layer Cards ───────────────────────────────────
@@ -36,13 +36,17 @@ class ViewController: UIViewController {
     private var batteryTimer: Timer?
     private var pulseTimer: Timer?
 
-    // Titanium & Emerald Theme Colors
-    private let bgColor = UIColor(red: 9/255, green: 13/255, blue: 22/255, alpha: 1)
-    private let surfaceColor = UIColor(red: 15/255, green: 22/255, blue: 35/255, alpha: 1)
-    private let cardColor = UIColor(red: 20/255, green: 29/255, blue: 45/255, alpha: 1)
-    private let accent = UIColor(red: 99/255, green: 102/255, blue: 241/255, alpha: 1) // Electric Indigo
-    private let emerald = UIColor(red: 16/255, green: 185/255, blue: 129/255, alpha: 1) // Glowing Emerald
-    private let red = UIColor(red: 239/255, green: 68/255, blue: 68/255, alpha: 1)
+    // Titanium Slate & Neon Indigo Theme Colors
+    private let bgColor = UIColor(red: 9/255, green: 13/255, blue: 22/255, alpha: 1) // Deep Dark Slate #090D16
+    private let surfaceColor = UIColor(red: 15/255, green: 23/255, blue: 42/255, alpha: 1) // #0F172A
+    private let cardColor = UIColor(red: 26/255, green: 34/255, blue: 53/255, alpha: 0.95) // Elevated Slate
+    private let cardBorder = UIColor(white: 1, alpha: 0.1)
+    
+    private let accent = UIColor(red: 99/255, green: 102/255, blue: 241/255, alpha: 1) // Electric Indigo #6366F1
+    private let cyan = UIColor(red: 6/255, green: 182/255, blue: 212/255, alpha: 1) // Cyber Cyan #06B6D4
+    private let emerald = UIColor(red: 16/255, green: 185/255, blue: 129/255, alpha: 1) // Glowing Emerald #10B981
+    private let red = UIColor(red: 244/255, green: 63/255, blue: 94/255, alpha: 1) // Rose #F43F5E
+    
     private let textPrimary = UIColor(red: 248/255, green: 250/255, blue: 252/255, alpha: 1)
     private let textMuted = UIColor(red: 148/255, green: 163/255, blue: 184/255, alpha: 1)
 
@@ -68,6 +72,7 @@ class ViewController: UIViewController {
     deinit {
         clockTimer?.invalidate()
         batteryTimer?.invalidate()
+        pulseTimer?.invalidate()
         NotificationCenter.default.removeObserver(self)
     }
 
@@ -76,14 +81,16 @@ class ViewController: UIViewController {
         let appearance = UINavigationBarAppearance()
         appearance.configureWithOpaqueBackground()
         appearance.backgroundColor = surfaceColor
-        appearance.titleTextAttributes = [.foregroundColor: textPrimary, .font: UIFont.systemFont(ofSize: 16, weight: .semibold)]
+        appearance.titleTextAttributes = [
+            .foregroundColor: textPrimary,
+            .font: UIFont.systemFont(ofSize: 16, weight: .bold)
+        ]
         navigationController?.navigationBar.standardAppearance = appearance
         navigationController?.navigationBar.scrollEdgeAppearance = appearance
-        navigationController?.navigationBar.tintColor = accent
-        title = "iOSControl"
+        navigationController?.navigationBar.tintColor = cyan
+        title = "iOSControl Studio"
 
-        // Right button = QR Scan (placeholder)
-        let infoBtn = UIBarButtonItem(image: UIImage(systemName: "info.circle"), style: .plain, target: self, action: #selector(showAbout))
+        let infoBtn = UIBarButtonItem(image: UIImage(systemName: "info.circle.fill"), style: .plain, target: self, action: #selector(showAbout))
         navigationItem.rightBarButtonItem = infoBtn
     }
 
@@ -137,59 +144,59 @@ class ViewController: UIViewController {
         container.translatesAutoresizingMaskIntoConstraints = false
         parent.addSubview(container)
         NSLayoutConstraint.activate([
-            container.topAnchor.constraint(equalTo: parent.topAnchor, constant: 24),
+            container.topAnchor.constraint(equalTo: parent.topAnchor, constant: 20),
             container.leadingAnchor.constraint(equalTo: parent.leadingAnchor, constant: 20),
             container.trailingAnchor.constraint(equalTo: parent.trailingAnchor, constant: -20),
-            container.heightAnchor.constraint(equalToConstant: 80)
+            container.heightAnchor.constraint(equalToConstant: 76)
         ])
         
-        // Icon
+        // Icon with Gradient Glow
         let iconBg = UIView()
-        iconBg.backgroundColor = UIColor(red: 99/255, green: 102/255, blue: 241/255, alpha: 0.15)
+        iconBg.backgroundColor = UIColor(red: 99/255, green: 102/255, blue: 241/255, alpha: 0.2)
         iconBg.layer.cornerRadius = 16
+        iconBg.layer.borderWidth = 1
+        iconBg.layer.borderColor = UIColor(red: 99/255, green: 102/255, blue: 241/255, alpha: 0.4).cgColor
         iconBg.translatesAutoresizingMaskIntoConstraints = false
         container.addSubview(iconBg)
         
-        let icon = UIImageView(image: UIImage(systemName: "network"))
-        icon.tintColor = accent
+        let icon = UIImageView(image: UIImage(systemName: "cpu.fill"))
+        icon.tintColor = cyan
         icon.contentMode = .scaleAspectFit
         icon.translatesAutoresizingMaskIntoConstraints = false
         iconBg.addSubview(icon)
         
         let titleL = UILabel()
-        titleL.text = "iOSControl Pro"
-        titleL.font = UIFont.systemFont(ofSize: 24, weight: .bold)
+        titleL.text = "iOSControl Agent"
+        titleL.font = UIFont.systemFont(ofSize: 22, weight: .bold)
         titleL.textColor = textPrimary
         titleL.translatesAutoresizingMaskIntoConstraints = false
         container.addSubview(titleL)
         
         let subL = UILabel()
-        subL.text = "Remote Script Automation Agent"
+        subL.text = "Futuristic Remote Automation Engine"
         subL.font = UIFont.systemFont(ofSize: 12, weight: .medium)
-        subL.textColor = textMuted
+        subL.textColor = cyan
         subL.translatesAutoresizingMaskIntoConstraints = false
         container.addSubview(subL)
         
         NSLayoutConstraint.activate([
             iconBg.leadingAnchor.constraint(equalTo: container.leadingAnchor),
             iconBg.centerYAnchor.constraint(equalTo: container.centerYAnchor),
-            iconBg.widthAnchor.constraint(equalToConstant: 56),
-            iconBg.heightAnchor.constraint(equalToConstant: 56),
+            iconBg.widthAnchor.constraint(equalToConstant: 54),
+            iconBg.heightAnchor.constraint(equalToConstant: 54),
             
             icon.centerXAnchor.constraint(equalTo: iconBg.centerXAnchor),
             icon.centerYAnchor.constraint(equalTo: iconBg.centerYAnchor),
-            icon.widthAnchor.constraint(equalToConstant: 28),
-            icon.heightAnchor.constraint(equalToConstant: 28),
+            icon.widthAnchor.constraint(equalToConstant: 26),
+            icon.heightAnchor.constraint(equalToConstant: 26),
             
             titleL.leadingAnchor.constraint(equalTo: iconBg.trailingAnchor, constant: 14),
-            titleL.topAnchor.constraint(equalTo: iconBg.topAnchor, constant: 6),
+            titleL.topAnchor.constraint(equalTo: iconBg.topAnchor, constant: 4),
             titleL.trailingAnchor.constraint(equalTo: container.trailingAnchor),
             
             subL.leadingAnchor.constraint(equalTo: titleL.leadingAnchor),
             subL.topAnchor.constraint(equalTo: titleL.bottomAnchor, constant: 4),
         ])
-        
-        
     }
     
     // MARK: - Status Card
@@ -199,33 +206,33 @@ class ViewController: UIViewController {
         statusCard.translatesAutoresizingMaskIntoConstraints = false
         parent.addSubview(statusCard)
         NSLayoutConstraint.activate([
-            statusCard.topAnchor.constraint(equalTo: prev.bottomAnchor, constant: 16),
+            statusCard.topAnchor.constraint(equalTo: prev.bottomAnchor, constant: 14),
             statusCard.leadingAnchor.constraint(equalTo: parent.leadingAnchor, constant: 20),
             statusCard.trailingAnchor.constraint(equalTo: parent.trailingAnchor, constant: -20),
-            statusCard.heightAnchor.constraint(equalToConstant: 70)
+            statusCard.heightAnchor.constraint(equalToConstant: 74)
         ])
         
-        let titleL = cardSectionTitle("📡 Trạng Thái Kết Nối")
+        let titleL = cardSectionTitle("📡 TRẠNG THÁI KẾT NỐI WebSocket")
         statusCard.addSubview(titleL)
         
         wsStatusDot.backgroundColor = red
-        wsStatusDot.layer.cornerRadius = 5
+        wsStatusDot.layer.cornerRadius = 6
         wsStatusDot.translatesAutoresizingMaskIntoConstraints = false
         statusCard.addSubview(wsStatusDot)
         
         wsStatusLabel.text = "Chưa kết nối"
-        wsStatusLabel.font = UIFont.systemFont(ofSize: 13, weight: .medium)
+        wsStatusLabel.font = UIFont.systemFont(ofSize: 13, weight: .bold)
         wsStatusLabel.textColor = textMuted
         wsStatusLabel.translatesAutoresizingMaskIntoConstraints = false
         statusCard.addSubview(wsStatusLabel)
         
-        batteryLabel.font = UIFont.systemFont(ofSize: 12, weight: .regular)
+        batteryLabel.font = UIFont.systemFont(ofSize: 12, weight: .semibold)
         batteryLabel.textColor = textMuted
         batteryLabel.translatesAutoresizingMaskIntoConstraints = false
         statusCard.addSubview(batteryLabel)
         
-        timeLabel.font = UIFont.monospacedSystemFont(ofSize: 12, weight: .regular)
-        timeLabel.textColor = accent
+        timeLabel.font = UIFont.monospacedSystemFont(ofSize: 12, weight: .bold)
+        timeLabel.textColor = cyan
         timeLabel.textAlignment = .right
         timeLabel.translatesAutoresizingMaskIntoConstraints = false
         statusCard.addSubview(timeLabel)
@@ -236,8 +243,8 @@ class ViewController: UIViewController {
             
             wsStatusDot.leadingAnchor.constraint(equalTo: statusCard.leadingAnchor, constant: 14),
             wsStatusDot.bottomAnchor.constraint(equalTo: statusCard.bottomAnchor, constant: -14),
-            wsStatusDot.widthAnchor.constraint(equalToConstant: 10),
-            wsStatusDot.heightAnchor.constraint(equalToConstant: 10),
+            wsStatusDot.widthAnchor.constraint(equalToConstant: 12),
+            wsStatusDot.heightAnchor.constraint(equalToConstant: 12),
             
             wsStatusLabel.leadingAnchor.constraint(equalTo: wsStatusDot.trailingAnchor, constant: 8),
             wsStatusLabel.centerYAnchor.constraint(equalTo: wsStatusDot.centerYAnchor),
@@ -250,14 +257,14 @@ class ViewController: UIViewController {
         ])
     }
     
-    // MARK: - Server Control Card (v5.4)
+    // MARK: - Server Control Card
     private func buildServerControlCard(in parent: UIView) {
         let prev = parent.subviews.last!
         styleCard(serverCard)
         serverCard.translatesAutoresizingMaskIntoConstraints = false
         parent.addSubview(serverCard)
         
-        let titleL = cardSectionTitle("🖥️ MÁY CHỦ DASHBOARD (LOCAL)")
+        let titleL = cardSectionTitle("🖥️ MÁY CHỦ DASHBOARD LOCAL")
         serverCard.addSubview(titleL)
         
         let statusDot = UIView()
@@ -267,7 +274,7 @@ class ViewController: UIViewController {
         serverCard.addSubview(statusDot)
         
         let statusText = UILabel()
-        statusText.text = "Máy chủ đang chạy ngầm liên tục"
+        statusText.text = "HTTP Local Server Active :9898"
         statusText.textColor = emerald
         statusText.font = UIFont.systemFont(ofSize: 13, weight: .bold)
         statusText.translatesAutoresizingMaskIntoConstraints = false
@@ -277,16 +284,16 @@ class ViewController: UIViewController {
         let urlStr = "http://\(ip):9898"
         
         let urlContainer = UIView()
-        urlContainer.backgroundColor = UIColor(red: 8/255, green: 11/255, blue: 20/255, alpha: 1)
+        urlContainer.backgroundColor = UIColor(red: 10/255, green: 14/255, blue: 24/255, alpha: 1)
         urlContainer.layer.cornerRadius = 10
         urlContainer.layer.borderWidth = 1
-        urlContainer.layer.borderColor = UIColor(white: 1, alpha: 0.1).cgColor
+        urlContainer.layer.borderColor = UIColor(red: 6/255, green: 182/255, blue: 212/255, alpha: 0.3).cgColor
         urlContainer.translatesAutoresizingMaskIntoConstraints = false
         serverCard.addSubview(urlContainer)
         
         let urlLabel = UILabel()
         urlLabel.text = urlStr
-        urlLabel.textColor = textPrimary
+        urlLabel.textColor = cyan
         urlLabel.font = UIFont.monospacedSystemFont(ofSize: 15, weight: .bold)
         urlLabel.textAlignment = .center
         urlLabel.translatesAutoresizingMaskIntoConstraints = false
@@ -302,11 +309,11 @@ class ViewController: UIViewController {
         
         // Copy Button
         let copyBtn = UIButton(type: .system)
-        copyBtn.setTitle("📋 Sao chép URL", for: .normal)
+        copyBtn.setTitle("📋 Sao chép URL Web", for: .normal)
         copyBtn.setTitleColor(.white, for: .normal)
         copyBtn.backgroundColor = accent
         copyBtn.titleLabel?.font = UIFont.systemFont(ofSize: 13, weight: .bold)
-        copyBtn.layer.cornerRadius = 8
+        copyBtn.layer.cornerRadius = 10
         copyBtn.addTarget(self, action: #selector(copyServerUrl), for: .touchUpInside)
         copyBtn.translatesAutoresizingMaskIntoConstraints = false
         serverCard.addSubview(copyBtn)
@@ -315,7 +322,7 @@ class ViewController: UIViewController {
             serverCard.topAnchor.constraint(equalTo: prev.bottomAnchor, constant: 12),
             serverCard.leadingAnchor.constraint(equalTo: parent.leadingAnchor, constant: 20),
             serverCard.trailingAnchor.constraint(equalTo: parent.trailingAnchor, constant: -20),
-            serverCard.heightAnchor.constraint(equalToConstant: 180),
+            serverCard.heightAnchor.constraint(equalToConstant: 184),
             
             titleL.topAnchor.constraint(equalTo: serverCard.topAnchor, constant: 12),
             titleL.leadingAnchor.constraint(equalTo: serverCard.leadingAnchor, constant: 14),
@@ -340,10 +347,10 @@ class ViewController: UIViewController {
             descLabel.leadingAnchor.constraint(equalTo: serverCard.leadingAnchor, constant: 14),
             descLabel.trailingAnchor.constraint(equalTo: serverCard.trailingAnchor, constant: -14),
             
-            copyBtn.topAnchor.constraint(equalTo: descLabel.bottomAnchor, constant: 12),
+            copyBtn.topAnchor.constraint(equalTo: descLabel.bottomAnchor, constant: 10),
             copyBtn.leadingAnchor.constraint(equalTo: serverCard.leadingAnchor, constant: 14),
             copyBtn.trailingAnchor.constraint(equalTo: serverCard.trailingAnchor, constant: -14),
-            copyBtn.heightAnchor.constraint(equalToConstant: 36)
+            copyBtn.heightAnchor.constraint(equalToConstant: 38)
         ])
     }
     
@@ -367,11 +374,11 @@ class ViewController: UIViewController {
             card.heightAnchor.constraint(equalToConstant: 68)
         ])
         
-        let titleL = cardSectionTitle("👁 Overlay HUD")
+        let titleL = cardSectionTitle("👁 OVERLAY GLASS HUD")
         card.addSubview(titleL)
         
         let sub = UILabel()
-        sub.text = "Hiển thị log nổi trên màn hình"
+        sub.text = "Cửa sổ log nổi trên màn hình ứng dụng"
         sub.font = UIFont.systemFont(ofSize: 12)
         sub.textColor = textMuted
         sub.translatesAutoresizingMaskIntoConstraints = false
@@ -395,6 +402,49 @@ class ViewController: UIViewController {
         ])
     }
     
+    // MARK: - Script Manager Card
+    private func buildScriptCard(in parent: UIView) {
+        let prev = parent.subviews.last!
+        styleCard(scriptCard)
+        scriptCard.translatesAutoresizingMaskIntoConstraints = false
+        parent.addSubview(scriptCard)
+        
+        let titleL = cardSectionTitle("📁 QUẢN LÝ & CHẠY SCRIPT LUA")
+        scriptCard.addSubview(titleL)
+        
+        let addBtn = UIButton(type: .system)
+        addBtn.setTitle("➕ Tạo Script", for: .normal)
+        addBtn.setTitleColor(cyan, for: .normal)
+        addBtn.titleLabel?.font = UIFont.systemFont(ofSize: 12, weight: .bold)
+        addBtn.addTarget(self, action: #selector(createScriptPressed), for: .touchUpInside)
+        addBtn.translatesAutoresizingMaskIntoConstraints = false
+        scriptCard.addSubview(addBtn)
+        
+        scriptStack.axis = .vertical
+        scriptStack.spacing = 8
+        scriptStack.translatesAutoresizingMaskIntoConstraints = false
+        scriptCard.addSubview(scriptStack)
+        
+        NSLayoutConstraint.activate([
+            scriptCard.topAnchor.constraint(equalTo: prev.bottomAnchor, constant: 12),
+            scriptCard.leadingAnchor.constraint(equalTo: parent.leadingAnchor, constant: 20),
+            scriptCard.trailingAnchor.constraint(equalTo: parent.trailingAnchor, constant: -20),
+            
+            titleL.topAnchor.constraint(equalTo: scriptCard.topAnchor, constant: 12),
+            titleL.leadingAnchor.constraint(equalTo: scriptCard.leadingAnchor, constant: 14),
+            
+            addBtn.trailingAnchor.constraint(equalTo: scriptCard.trailingAnchor, constant: -14),
+            addBtn.centerYAnchor.constraint(equalTo: titleL.centerYAnchor),
+            
+            scriptStack.topAnchor.constraint(equalTo: titleL.bottomAnchor, constant: 12),
+            scriptStack.leadingAnchor.constraint(equalTo: scriptCard.leadingAnchor, constant: 14),
+            scriptStack.trailingAnchor.constraint(equalTo: scriptCard.trailingAnchor, constant: -14),
+            scriptStack.bottomAnchor.constraint(equalTo: scriptCard.bottomAnchor, constant: -14)
+        ])
+        
+        loadAndRenderScripts()
+    }
+    
     // MARK: - Log Card
     private func buildLogCard(in parent: UIView) {
         let prev = parent.subviews.last!
@@ -409,23 +459,25 @@ class ViewController: UIViewController {
             card.heightAnchor.constraint(equalToConstant: 160)
         ])
         
-        let titleL = cardSectionTitle("📋 Activity Log")
+        let titleL = cardSectionTitle("⚡ TERMINAL CONSOLE LOGS")
         card.addSubview(titleL)
         
         let clearBtn = UIButton(type: .system)
-        clearBtn.setTitle("Xóa", for: .normal)
-        clearBtn.setTitleColor(textMuted, for: .normal)
-        clearBtn.titleLabel?.font = UIFont.systemFont(ofSize: 12)
+        clearBtn.setTitle("Xóa Log", for: .normal)
+        clearBtn.setTitleColor(red, for: .normal)
+        clearBtn.titleLabel?.font = UIFont.systemFont(ofSize: 12, weight: .semibold)
         clearBtn.addTarget(self, action: #selector(clearLog), for: .touchUpInside)
         clearBtn.translatesAutoresizingMaskIntoConstraints = false
         card.addSubview(clearBtn)
         
-        logTextView.backgroundColor = UIColor(red: 8/255, green: 11/255, blue: 20/255, alpha: 1)
-        logTextView.textColor = UIColor(red: 100/255, green: 200/255, blue: 150/255, alpha: 1)
+        logTextView.backgroundColor = UIColor(red: 6/255, green: 9/255, blue: 16/255, alpha: 1)
+        logTextView.textColor = cyan
         logTextView.font = UIFont.monospacedSystemFont(ofSize: 10, weight: .regular)
         logTextView.isEditable = false
         logTextView.layer.cornerRadius = 8
-        logTextView.text = "── Agent Ready ──"
+        logTextView.layer.borderWidth = 1
+        logTextView.layer.borderColor = UIColor(white: 1, alpha: 0.05).cgColor
+        logTextView.text = "── iOSControl Agent System Ready ──"
         logTextView.translatesAutoresizingMaskIntoConstraints = false
         card.addSubview(logTextView)
         
@@ -446,8 +498,8 @@ class ViewController: UIViewController {
     private func buildVersionLabel(in parent: UIView) {
         let prev = parent.subviews.last!
         let label = UILabel()
-        label.text = "iOSControl Pro v3.0 • Powered by iControl Engine"
-        label.font = UIFont.systemFont(ofSize: 10)
+        label.text = "iOSControl Studio Agent v5.0 • iControl Engine"
+        label.font = UIFont.systemFont(ofSize: 10, weight: .medium)
         label.textColor = textMuted
         label.textAlignment = .center
         label.translatesAutoresizingMaskIntoConstraints = false
@@ -464,37 +516,20 @@ class ViewController: UIViewController {
         card.backgroundColor = cardColor
         card.layer.cornerRadius = 16
         card.layer.borderWidth = 1
-        card.layer.borderColor = UIColor(white: 1, alpha: 0.05).cgColor
+        card.layer.borderColor = cardBorder.cgColor
         card.layer.shadowColor = UIColor.black.cgColor
-        card.layer.shadowOffset = CGSize(width: 0, height: 4)
-        card.layer.shadowRadius = 12
-        card.layer.shadowOpacity = 0.3
+        card.layer.shadowOffset = CGSize(width: 0, height: 6)
+        card.layer.shadowRadius = 16
+        card.layer.shadowOpacity = 0.4
     }
     
     private func cardSectionTitle(_ text: String) -> UILabel {
         let l = UILabel()
         l.text = text
-        l.font = UIFont.systemFont(ofSize: 12, weight: .semibold)
+        l.font = UIFont.systemFont(ofSize: 11, weight: .bold)
         l.textColor = textMuted
         l.translatesAutoresizingMaskIntoConstraints = false
         return l
-    }
-    
-    private func styleField(_ field: PaddedTextField, placeholder: String, icon: String) {
-        field.placeholder = placeholder
-        field.attributedPlaceholder = NSAttributedString(string: placeholder, attributes: [.foregroundColor: textMuted])
-        field.backgroundColor = UIColor(red: 8/255, green: 11/255, blue: 20/255, alpha: 1)
-        field.textColor = textPrimary
-        field.font = UIFont.monospacedSystemFont(ofSize: 14, weight: .regular)
-        field.layer.cornerRadius = 10
-        field.layer.borderWidth = 1
-        field.layer.borderColor = UIColor(white: 1, alpha: 0.07).cgColor
-        field.leftPadding = 12
-        field.translatesAutoresizingMaskIntoConstraints = false
-        
-        // Edit focus
-        field.addTarget(self, action: #selector(fieldFocused(_:)), for: .editingDidBegin)
-        field.addTarget(self, action: #selector(fieldBlurred(_:)), for: .editingDidEnd)
     }
     
     private func applyGradientToCard(_ card: UIView) {
@@ -503,7 +538,7 @@ class ViewController: UIViewController {
         grad.frame = card.bounds
         grad.cornerRadius = 16
         grad.colors = [
-            UIColor(red: 99/255, green: 102/255, blue: 241/255, alpha: 0.08).cgColor,
+            UIColor(red: 99/255, green: 102/255, blue: 241/255, alpha: 0.1).cgColor,
             UIColor.clear.cgColor
         ]
         grad.startPoint = CGPoint(x: 0, y: 0)
@@ -535,7 +570,6 @@ class ViewController: UIViewController {
         let icon = state == .charging ? "⚡" : (level < 20 ? "🔴" : (level < 50 ? "🟡" : "🟢"))
         batteryLabel.text = "\(icon) \(level)%"
         
-        // Send battery to server if connected
         if isConnected {
             WebSocketClient.shared.sendBatteryLevel(level)
         }
@@ -551,20 +585,12 @@ class ViewController: UIViewController {
         logTextView.text = "── Log Cleared ──"
     }
     
-    @objc private func fieldFocused(_ field: UITextField) {
-        UIView.animate(withDuration: 0.2) {
-            field.layer.borderColor = UIColor(red: 99/255, green: 102/255, blue: 241/255, alpha: 0.6).cgColor
-        }
-    }
-    
-    @objc private func fieldBlurred(_ field: UITextField) {
-        UIView.animate(withDuration: 0.2) {
-            field.layer.borderColor = UIColor(white: 1, alpha: 0.07).cgColor
-        }
-    }
-    
     @objc private func showAbout() {
-        let alert = UIAlertController(title: "iOSControl Pro v3.0", message: "Remote Script Automation Agent\n\nKết nối máy tính qua WiFi để điều khiển tự động.\n\n© 2026 iControl Team", preferredStyle: .alert)
+        let alert = UIAlertController(
+            title: "iOSControl Studio Agent",
+            message: "Remote Script Automation Engine v5.0\n\nKết nối máy tính qua WiFi để điều khiển tự động.\n\n© 2026 iControl Team",
+            preferredStyle: .alert
+        )
         alert.addAction(UIAlertAction(title: "OK", style: .default))
         present(alert, animated: true)
     }
@@ -573,14 +599,14 @@ class ViewController: UIViewController {
     @objc private func onDeviceConnected() {
         DispatchQueue.main.async {
             self.setConnectedUI(true)
-            self.appendLog("✅ Đã kết nối với server")
+            self.appendLog("✅ Đã kết nối với server WebSocket")
         }
     }
     
     @objc private func onDeviceDisconnected() {
         DispatchQueue.main.async {
             self.setConnectedUI(false)
-            self.appendLog("❌ Mất kết nối server")
+            self.appendLog("❌ Mất kết nối server WebSocket")
         }
     }
     
@@ -634,7 +660,7 @@ class ViewController: UIViewController {
         let line = "[\(f.string(from: Date()))] \(text)"
         let current = logTextView.text ?? ""
         let lines = current.components(separatedBy: "\n")
-        let trimmed = lines.suffix(50).joined(separator: "\n") // Keep last 50 lines
+        let trimmed = lines.suffix(50).joined(separator: "\n")
         logTextView.text = trimmed + "\n" + line
         let range = NSRange(location: logTextView.text.count - 1, length: 1)
         logTextView.scrollRangeToVisible(range)
@@ -643,9 +669,9 @@ class ViewController: UIViewController {
     private func showToast(_ msg: String) {
         let toast = UILabel()
         toast.text = "  \(msg)  "
-        toast.font = UIFont.systemFont(ofSize: 13, weight: .medium)
+        toast.font = UIFont.systemFont(ofSize: 13, weight: .semibold)
         toast.textColor = .white
-        toast.backgroundColor = UIColor(red: 30/255, green: 38/255, blue: 60/255, alpha: 0.95)
+        toast.backgroundColor = UIColor(red: 15/255, green: 23/255, blue: 42/255, alpha: 0.95)
         toast.layer.cornerRadius = 10; toast.clipsToBounds = true
         toast.textAlignment = .center
         toast.alpha = 0
@@ -662,49 +688,7 @@ class ViewController: UIViewController {
         }
     }
     
-    // MARK: - Script Manager Card Layout (v5.2)
-    private func buildScriptCard(in parent: UIView) {
-        let prev = parent.subviews.last!
-        styleCard(scriptCard)
-        scriptCard.translatesAutoresizingMaskIntoConstraints = false
-        parent.addSubview(scriptCard)
-        
-        let titleL = cardSectionTitle("📁 QUẢN LÝ & CHẠY SCRIPT LUA")
-        scriptCard.addSubview(titleL)
-        
-        let addBtn = UIButton(type: .system)
-        addBtn.setTitle("➕ Tạo Script", for: .normal)
-        addBtn.setTitleColor(accent, for: .normal)
-        addBtn.titleLabel?.font = UIFont.systemFont(ofSize: 12, weight: .bold)
-        addBtn.addTarget(self, action: #selector(createScriptPressed), for: .touchUpInside)
-        addBtn.translatesAutoresizingMaskIntoConstraints = false
-        scriptCard.addSubview(addBtn)
-        
-        scriptStack.axis = .vertical
-        scriptStack.spacing = 8
-        scriptStack.translatesAutoresizingMaskIntoConstraints = false
-        scriptCard.addSubview(scriptStack)
-        
-        NSLayoutConstraint.activate([
-            scriptCard.topAnchor.constraint(equalTo: prev.bottomAnchor, constant: 12),
-            scriptCard.leadingAnchor.constraint(equalTo: parent.leadingAnchor, constant: 20),
-            scriptCard.trailingAnchor.constraint(equalTo: parent.trailingAnchor, constant: -20),
-            
-            titleL.topAnchor.constraint(equalTo: scriptCard.topAnchor, constant: 12),
-            titleL.leadingAnchor.constraint(equalTo: scriptCard.leadingAnchor, constant: 14),
-            
-            addBtn.trailingAnchor.constraint(equalTo: scriptCard.trailingAnchor, constant: -14),
-            addBtn.centerYAnchor.constraint(equalTo: titleL.centerYAnchor),
-            
-            scriptStack.topAnchor.constraint(equalTo: titleL.bottomAnchor, constant: 12),
-            scriptStack.leadingAnchor.constraint(equalTo: scriptCard.leadingAnchor, constant: 14),
-            scriptStack.trailingAnchor.constraint(equalTo: scriptCard.trailingAnchor, constant: -14),
-            scriptStack.bottomAnchor.constraint(equalTo: scriptCard.bottomAnchor, constant: -14)
-        ])
-        
-        loadAndRenderScripts()
-    }
-    
+    // MARK: - Script Manager Card Layout
     private func getDocumentsDirectory() -> URL {
         FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
     }
@@ -725,7 +709,6 @@ class ViewController: UIViewController {
     }
     
     private func loadAndRenderScripts() {
-        // Clear old list
         for view in scriptStack.arrangedSubviews {
             scriptStack.removeArrangedSubview(view)
             view.removeFromSuperview()
@@ -737,16 +720,16 @@ class ViewController: UIViewController {
         
         for file in luaFiles {
             let row = UIView()
-            row.backgroundColor = bgColor
-            row.layer.cornerRadius = 8
-            row.layer.borderWidth = 0.5
-            row.layer.borderColor = UIColor(white: 1, alpha: 0.1).cgColor
+            row.backgroundColor = surfaceColor
+            row.layer.cornerRadius = 10
+            row.layer.borderWidth = 1
+            row.layer.borderColor = cardBorder.cgColor
             row.translatesAutoresizingMaskIntoConstraints = false
             
             let label = UILabel()
             label.text = file.lastPathComponent
             label.textColor = textPrimary
-            label.font = UIFont.systemFont(ofSize: 13, weight: .medium)
+            label.font = UIFont.systemFont(ofSize: 13, weight: .semibold)
             label.translatesAutoresizingMaskIntoConstraints = false
             row.addSubview(label)
             
@@ -787,26 +770,26 @@ class ViewController: UIViewController {
             row.addSubview(delBtn)
             
             NSLayoutConstraint.activate([
-                row.heightAnchor.constraint(equalToConstant: 44),
+                row.heightAnchor.constraint(equalToConstant: 46),
                 
-                label.leadingAnchor.constraint(equalTo: row.leadingAnchor, constant: 10),
+                label.leadingAnchor.constraint(equalTo: row.leadingAnchor, constant: 12),
                 label.centerYAnchor.constraint(equalTo: row.centerYAnchor),
                 label.trailingAnchor.constraint(equalTo: editBtn.leadingAnchor, constant: -8),
                 
                 delBtn.trailingAnchor.constraint(equalTo: row.trailingAnchor, constant: -8),
                 delBtn.centerYAnchor.constraint(equalTo: row.centerYAnchor),
-                delBtn.widthAnchor.constraint(equalToConstant: 30),
-                delBtn.heightAnchor.constraint(equalToConstant: 28),
+                delBtn.widthAnchor.constraint(equalToConstant: 32),
+                delBtn.heightAnchor.constraint(equalToConstant: 30),
                 
                 runBtn.trailingAnchor.constraint(equalTo: delBtn.leadingAnchor, constant: -6),
                 runBtn.centerYAnchor.constraint(equalTo: row.centerYAnchor),
-                runBtn.widthAnchor.constraint(equalToConstant: 54),
-                runBtn.heightAnchor.constraint(equalToConstant: 28),
+                runBtn.widthAnchor.constraint(equalToConstant: 58),
+                runBtn.heightAnchor.constraint(equalToConstant: 30),
                 
                 editBtn.trailingAnchor.constraint(equalTo: runBtn.leadingAnchor, constant: -6),
                 editBtn.centerYAnchor.constraint(equalTo: row.centerYAnchor),
-                editBtn.widthAnchor.constraint(equalToConstant: 46),
-                editBtn.heightAnchor.constraint(equalToConstant: 28)
+                editBtn.widthAnchor.constraint(equalToConstant: 50),
+                editBtn.heightAnchor.constraint(equalToConstant: 30)
             ])
             
             scriptStack.addArrangedSubview(row)
@@ -871,18 +854,18 @@ class ViewController: UIViewController {
     }
 }
 
-// MARK: - Custom UI Component helpers (v5.2)
+// MARK: - Custom UI Component helpers
 class ScriptActionButton: UIButton {
     var fileURL: URL?
 }
 
-// MARK: - Local Lua Editor View Controller (v5.2)
+// MARK: - Local Lua Editor View Controller
 class ScriptEditViewController: UIViewController {
     let fileURL: URL
     var onSave: (() -> Void)?
     
     private let textView = UITextView()
-    private let bgColor = UIColor(red: 8/255, green: 11/255, blue: 20/255, alpha: 1)
+    private let bgColor = UIColor(red: 9/255, green: 13/255, blue: 22/255, alpha: 1)
     private let textColor = UIColor(red: 241/255, green: 245/255, blue: 249/255, alpha: 1)
     
     init(fileURL: URL, initialContent: String, onSave: (() -> Void)?) {
@@ -901,7 +884,6 @@ class ScriptEditViewController: UIViewController {
         title = fileURL.lastPathComponent
         view.backgroundColor = bgColor
         
-        // Save & Cancel button
         navigationItem.leftBarButtonItem = UIBarButtonItem(title: "Đóng", style: .plain, target: self, action: #selector(closePressed))
         navigationItem.rightBarButtonItem = UIBarButtonItem(title: "Lưu", style: .done, target: self, action: #selector(savePressed))
         
@@ -937,13 +919,6 @@ class ScriptEditViewController: UIViewController {
             present(alert, animated: true)
         }
     }
-}
-
-// MARK: - PaddedTextField
-class PaddedTextField: UITextField {
-    var leftPadding: CGFloat = 12
-    override func textRect(forBounds bounds: CGRect) -> CGRect { bounds.inset(by: UIEdgeInsets(top: 0, left: leftPadding, bottom: 0, right: 12)) }
-    override func editingRect(forBounds bounds: CGRect) -> CGRect { bounds.inset(by: UIEdgeInsets(top: 0, left: leftPadding, bottom: 0, right: 12)) }
 }
 
 // MARK: - Notification Names

@@ -1,6 +1,6 @@
 import UIKit
 
-/// Floating Overlay HUD Window that sits on top of all views (UIWindowLevelStatusBar + 1)
+/// Floating Overlay Glass HUD Window that sits on top of all views (UIWindowLevelStatusBar + 1)
 class FloatingWindow: UIWindow {
     static let shared = FloatingWindow()
     
@@ -14,16 +14,15 @@ class FloatingWindow: UIWindow {
     
     // Layout State
     private var isMinimized = false
-    private let expandedSize = CGSize(width: 280, height: 200)
-    private let minimizedSize = CGSize(width: 60, height: 60)
+    private let expandedSize = CGSize(width: 290, height: 210)
+    private let minimizedSize = CGSize(width: 64, height: 64)
     
     private init() {
-        // Initialize at the status bar level to overlay other views
         let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene
         if let windowScene = scene {
             super.init(windowScene: windowScene)
         } else {
-            super.init(frame: CGRect(x: 20, y: 80, width: 280, height: 200))
+            super.init(frame: CGRect(x: 20, y: 80, width: 290, height: 210))
         }
         
         setupWindow()
@@ -39,24 +38,22 @@ class FloatingWindow: UIWindow {
         self.backgroundColor = .clear
         self.clipsToBounds = true
         self.frame = CGRect(origin: CGPoint(x: 20, y: 80), size: expandedSize)
-        
-        // Make sure window is interactive
         self.isUserInteractionEnabled = true
     }
     
     private func setupUI() {
-        // Container styling (Glassmorphism design)
+        // Container styling (Glassmorphism design v5.0)
         containerView.frame = self.bounds
         containerView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
-        containerView.backgroundColor = UIColor(red: 10/255, green: 15/255, blue: 25/255, alpha: 0.85)
-        containerView.layer.cornerRadius = 14
+        containerView.backgroundColor = UIColor(red: 15/255, green: 23/255, blue: 42/255, alpha: 0.90) // Dark Glass Slate
+        containerView.layer.cornerRadius = 16
         containerView.layer.borderWidth = 1.5
-        containerView.layer.borderColor = UIColor(red: 99/255, green: 102/255, blue: 241/255, alpha: 0.6).cgColor // Indigo Glow
+        containerView.layer.borderColor = UIColor(red: 99/255, green: 102/255, blue: 241/255, alpha: 0.6).cgColor // Electric Indigo
         
-        // Shadow
-        containerView.layer.shadowColor = UIColor(red: 99/255, green: 102/255, blue: 241/255, alpha: 0.3).cgColor
-        containerView.layer.shadowOffset = CGSize(width: 0, height: 4)
-        containerView.layer.shadowRadius = 8
+        // Glow Shadow
+        containerView.layer.shadowColor = UIColor(red: 99/255, green: 102/255, blue: 241/255, alpha: 0.4).cgColor
+        containerView.layer.shadowOffset = CGSize(width: 0, height: 6)
+        containerView.layer.shadowRadius = 12
         containerView.layer.shadowOpacity = 0.8
         
         self.addSubview(containerView)
@@ -65,13 +62,13 @@ class FloatingWindow: UIWindow {
         headerLabel.text = "iOSControl HUD"
         headerLabel.textColor = .white
         headerLabel.font = UIFont.systemFont(ofSize: 12, weight: .bold)
-        headerLabel.frame = CGRect(x: 30, y: 8, width: 140, height: 20)
+        headerLabel.frame = CGRect(x: 30, y: 10, width: 140, height: 20)
         containerView.addSubview(headerLabel)
         
         // Status indicator
-        statusIndicator.frame = CGRect(x: 12, y: 13, width: 10, height: 10)
+        statusIndicator.frame = CGRect(x: 12, y: 15, width: 10, height: 10)
         statusIndicator.layer.cornerRadius = 5
-        statusIndicator.backgroundColor = .red // Start as disconnected
+        statusIndicator.backgroundColor = UIColor(red: 244/255, green: 63/255, blue: 94/255, alpha: 1.0) // Start as disconnected red
         containerView.addSubview(statusIndicator)
         
         // Double tap gesture to minimize/maximize
@@ -87,19 +84,21 @@ class FloatingWindow: UIWindow {
         NotificationCenter.default.addObserver(self, selector: #selector(handleTouchIndicatorNotification(_:)), name: Notification.Name("ShowTouchIndicatorNotification"), object: nil)
         
         // Log text view
-        logTextView.frame = CGRect(x: 10, y: 35, width: 260, height: 120)
-        logTextView.backgroundColor = UIColor(white: 0.0, alpha: 0.3)
-        logTextView.textColor = UIColor(red: 229/255, green: 231/255, blue: 235/255, alpha: 1.0)
-        logTextView.font = UIFont.monospacedSystemFont(ofSize: 9, weight: .regular)
+        logTextView.frame = CGRect(x: 12, y: 38, width: 266, height: 126)
+        logTextView.backgroundColor = UIColor(red: 9/255, green: 13/255, blue: 22/255, alpha: 0.8)
+        logTextView.textColor = UIColor(red: 6/255, green: 182/255, blue: 212/255, alpha: 1.0) // Neon Cyan
+        logTextView.font = UIFont.monospacedSystemFont(ofSize: 9.5, weight: .regular)
         logTextView.isEditable = false
-        logTextView.layer.cornerRadius = 6
-        logTextView.text = "HUD initialized. Double-tap to minimize."
+        logTextView.layer.cornerRadius = 8
+        logTextView.layer.borderWidth = 1
+        logTextView.layer.borderColor = UIColor(white: 1, alpha: 0.08).cgColor
+        logTextView.text = "HUD Agent Initialized. Double-tap to toggle minimize."
         containerView.addSubview(logTextView)
         
         // Stop Button
-        stopButton.frame = CGRect(x: 180, y: 6, width: 90, height: 24)
-        stopButton.setTitle("STOP", for: .normal)
-        stopButton.backgroundColor = UIColor(red: 239/255, green: 68/255, blue: 68/255, alpha: 0.8)
+        stopButton.frame = CGRect(x: 186, y: 8, width: 92, height: 24)
+        stopButton.setTitle("⏹ STOP", for: .normal)
+        stopButton.backgroundColor = UIColor(red: 244/255, green: 63/255, blue: 94/255, alpha: 0.9)
         stopButton.setTitleColor(.white, for: .normal)
         stopButton.titleLabel?.font = UIFont.systemFont(ofSize: 11, weight: .bold)
         stopButton.layer.cornerRadius = 6
@@ -111,13 +110,11 @@ class FloatingWindow: UIWindow {
     
     @objc private func handleDrag(_ gesture: UIPanGestureRecognizer) {
         let translation = gesture.translation(in: self.superview)
-        
         guard let windowScene = self.windowScene else { return }
         let screenBounds = windowScene.coordinateSpace.bounds
         
         var newCenter = CGPoint(x: self.center.x + translation.x, y: self.center.y + translation.y)
         
-        // Prevent going completely off-screen
         let padding: CGFloat = 10
         newCenter.x = max(padding + self.frame.width/2, min(screenBounds.width - padding - self.frame.width/2, newCenter.x))
         newCenter.y = max(padding + self.frame.height/2, min(screenBounds.height - padding - self.frame.height/2, newCenter.y))
@@ -138,15 +135,15 @@ class FloatingWindow: UIWindow {
                 self.logTextView.isHidden = true
                 self.stopButton.isHidden = true
                 self.headerLabel.isHidden = true
-                self.statusIndicator.frame = CGRect(x: 25, y: 25, width: 10, height: 10)
-                self.containerView.layer.cornerRadius = 30
+                self.statusIndicator.frame = CGRect(x: 27, y: 27, width: 10, height: 10)
+                self.containerView.layer.cornerRadius = 32
             } else {
                 self.frame.size = self.expandedSize
                 self.logTextView.isHidden = false
                 self.stopButton.isHidden = false
                 self.headerLabel.isHidden = false
-                self.statusIndicator.frame = CGRect(x: 12, y: 13, width: 10, height: 10)
-                self.containerView.layer.cornerRadius = 14
+                self.statusIndicator.frame = CGRect(x: 12, y: 15, width: 10, height: 10)
+                self.containerView.layer.cornerRadius = 16
             }
         }, completion: nil)
     }
@@ -157,7 +154,6 @@ class FloatingWindow: UIWindow {
         print("[FloatingHUD] Stop requested.")
         self.addLog("Script execution manually terminated.")
         WebSocketClient.shared.sendDeviceStatus(status: "online")
-        // Trigger script termination
         NotificationCenter.default.post(name: Notification.Name("TerminateScriptNotification"), object: nil)
     }
     
@@ -166,14 +162,14 @@ class FloatingWindow: UIWindow {
     func setStatus(online: Bool, running: Bool = false) {
         DispatchQueue.main.async {
             if !online {
-                self.statusIndicator.backgroundColor = .red
-                self.containerView.layer.borderColor = UIColor.red.cgColor
+                self.statusIndicator.backgroundColor = UIColor(red: 244/255, green: 63/255, blue: 94/255, alpha: 1.0)
+                self.containerView.layer.borderColor = UIColor(red: 244/255, green: 63/255, blue: 94/255, alpha: 0.8).cgColor
             } else if running {
                 self.statusIndicator.backgroundColor = UIColor(red: 99/255, green: 102/255, blue: 241/255, alpha: 1.0)
                 self.containerView.layer.borderColor = UIColor(red: 99/255, green: 102/255, blue: 241/255, alpha: 1.0).cgColor
             } else {
-                self.statusIndicator.backgroundColor = .green
-                self.containerView.layer.borderColor = UIColor(red: 16/255, green: 185/255, blue: 129/255, alpha: 1.0).cgColor
+                self.statusIndicator.backgroundColor = UIColor(red: 16/255, green: 185/255, blue: 129/255, alpha: 1.0)
+                self.containerView.layer.borderColor = UIColor(red: 16/255, green: 185/255, blue: 129/255, alpha: 0.8).cgColor
             }
         }
     }
@@ -187,7 +183,6 @@ class FloatingWindow: UIWindow {
             let newText = "\(self.logTextView.text ?? "")\n[\(timeStr)] \(text)"
             self.logTextView.text = newText
             
-            // Auto scroll to bottom
             let range = NSRange(location: newText.count - 1, length: 1)
             self.logTextView.scrollRangeToVisible(range)
         }
@@ -214,18 +209,15 @@ class FloatingWindow: UIWindow {
     
     func showTouchIndicator(at point: CGPoint) {
         DispatchQueue.main.async {
-            // Create circular target dot
             let indicator = UIView(frame: CGRect(x: point.x - 15, y: point.y - 15, width: 30, height: 30))
-            indicator.backgroundColor = UIColor(red: 239/255, green: 68/255, blue: 68/255, alpha: 0.4) // Semi-transparent red
+            indicator.backgroundColor = UIColor(red: 6/255, green: 182/255, blue: 212/255, alpha: 0.4) // Cyan shockwave
             indicator.layer.cornerRadius = 15
             indicator.layer.borderWidth = 2
-            indicator.layer.borderColor = UIColor(red: 239/255, green: 68/255, blue: 68/255, alpha: 0.95).cgColor // Neon red border
-            indicator.isUserInteractionEnabled = false // Prevent blocking touches
+            indicator.layer.borderColor = UIColor(red: 6/255, green: 182/255, blue: 212/255, alpha: 0.95).cgColor
+            indicator.isUserInteractionEnabled = false
             
-            // Add directly to HUD window
             self.addSubview(indicator)
             
-            // Neon shockwave expand & fade out animation
             UIView.animate(withDuration: 0.45, delay: 0, options: .curveEaseOut, animations: {
                 indicator.transform = CGAffineTransform(scaleX: 2.0, y: 2.0)
                 indicator.alpha = 0
