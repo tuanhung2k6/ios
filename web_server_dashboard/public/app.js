@@ -2,7 +2,8 @@
    iOSControl Pro — Frontend Application Logic v2.0
 ═══════════════════════════════════════════════════════ */
 
-// ── State ──────────────────────────────────────────────
+// ── State & Constants ──────────────────────────────────
+const LOG_COLORS = { system: 'system', success: 'success', error: 'error', warn: 'warn', info: 'info', log: 'log' };
 let ws = null;
 let wsReady = false;
 let reconnectAttempt = 0;
@@ -539,7 +540,7 @@ function updateActionButtons() {
     stopBtn.disabled = !hasDevice || !isRunning;
 }
 
-runBtn.addEventListener('click', () => {
+if (runBtn) runBtn.addEventListener('click', () => {
     if (!selectedDeviceUdid) return;
     const content = codeTextarea.value.trim();
     if (!content) { logToConsole('warn', 'Editor đang trống, không có gì để chạy'); return; }
@@ -547,13 +548,13 @@ runBtn.addEventListener('click', () => {
     logToConsole('info', `Gửi script "${scriptNameInput.value}" tới ${connectedDevices.find(d=>d.udid===selectedDeviceUdid)?.name}...`);
 });
 
-stopBtn.addEventListener('click', () => {
+if (stopBtn) stopBtn.addEventListener('click', () => {
     if (!selectedDeviceUdid) return;
     sendWs({ action: 'stop_script', targetUdid: selectedDeviceUdid });
     logToConsole('warn', 'Gửi lệnh DỪNG...');
 });
 
-runAllBtn.addEventListener('click', () => {
+if (runAllBtn) runAllBtn.addEventListener('click', () => {
     const content = codeTextarea.value.trim();
     if (!content) { logToConsole('warn', 'Editor đang trống'); return; }
     if (connectedDevices.length === 0) { logToConsole('warn', 'Không có thiết bị nào'); return; }
@@ -561,14 +562,14 @@ runAllBtn.addEventListener('click', () => {
     logToConsole('info', `Chạy script trên ${connectedDevices.length} thiết bị...`);
 });
 
-stopAllBtn.addEventListener('click', () => {
+if (stopAllBtn) stopAllBtn.addEventListener('click', () => {
     sendWs({ action: 'stop_all' });
     logToConsole('warn', 'Dừng tất cả thiết bị...');
 });
 
-saveBtn.addEventListener('click', saveScript);
+if (saveBtn) saveBtn.addEventListener('click', saveScript);
 
-newScriptBtn.addEventListener('click', () => {
+if (newScriptBtn) newScriptBtn.addEventListener('click', () => {
     currentScriptName = 'new_script.lua';
     scriptNameInput.value = currentScriptName;
     codeTextarea.value = `-- iOSControl Lua Script
@@ -583,22 +584,22 @@ log("Xong!")
     renderScriptList();
     activateTab('editor');
 
-// Automatically update Sileo repo URL display in instructions
-const repoUrlEl = document.getElementById('repo-url-display');
-if (repoUrlEl) {
-    const serverHost = window.location.host || 'localhost:9898';
-    repoUrlEl.textContent = 'http://' + serverHost + '/sileo_repo';
-}
+    const repoUrlEl = document.getElementById('repo-url-display');
+    if (repoUrlEl) {
+        const serverHost = window.location.host || 'localhost:9898';
+        repoUrlEl.textContent = 'http://' + serverHost + '/sileo_repo';
+    }
 });
 
-selectTargetEl.addEventListener('change', e => {
+if (selectTargetEl) selectTargetEl.addEventListener('change', e => {
     if (e.target.value) selectDevice(e.target.value);
     else { selectedDeviceUdid = null; updateActionButtons(); }
 });
 
-clearConsoleBtn.addEventListener('click', () => { consoleLogsEl.innerHTML = ''; });
+if (clearConsoleBtn) clearConsoleBtn.addEventListener('click', () => { if (consoleLogsEl) consoleLogsEl.innerHTML = ''; });
 
-$('btn-refresh-devices').addEventListener('click', async () => {
+const refreshDevBtn = $('btn-refresh-devices');
+if (refreshDevBtn) refreshDevBtn.addEventListener('click', async () => {
     try {
         const res = await fetch('/api/devices');
         const data = await res.json();
@@ -612,14 +613,8 @@ $('btn-refresh-devices').addEventListener('click', async () => {
 // ── Code Editor Helpers ────────────────────────────────
 function updateLineNumbers() {}
 
-
-
-
-
-
-
 // Tab key support in editor
-codeTextarea.addEventListener('keydown', e => {
+if (codeTextarea) codeTextarea.addEventListener('keydown', e => {
     if (e.key === 'Tab') {
         e.preventDefault();
         const s = codeTextarea.selectionStart;
@@ -630,7 +625,6 @@ codeTextarea.addEventListener('keydown', e => {
 });
 
 // ── Console Logger ─────────────────────────────────────
-const LOG_COLORS = { system: 'system', success: 'success', error: 'error', warn: 'warn', info: 'info', log: 'log' };
 
 function logToConsole(type, message, time) {
     const filterVal = logFilterEl.value;
