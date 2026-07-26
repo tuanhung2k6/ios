@@ -299,8 +299,10 @@ class LocalConnection {
                 self?.isWebSocket = true
                 print("[LocalConnection] Embedded WebSocket Upgrade Successful!")
                 
-                // Immediately send init message with device details
-                self?.sendInitData()
+                // Send init data after 100ms to allow client browser to settle HTTP 101 upgrade
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    self?.sendInitData()
+                }
             }
         }))
     }
@@ -313,12 +315,27 @@ class LocalConnection {
         let battery = Int(UIDevice.current.batteryLevel * 100)
         let udid = UserDefaults.standard.string(forKey: "iControl_device_udid") ?? "local_device"
         
-        let initMsg = """
-        {"type":"init","devices":[
-            {"udid":"\(udid)","name":"\(name)","model":"\(model)","ip":"\(ip)","ios_version":"\(version)","battery":\(battery >= 0 ? battery : 100),"vnc_port":5900,"status":"online"}
-        ],"serverInfo":{"ip":"\(ip)","port":9898}}
-        """
-        sendWebSocketText(initMsg)
+        let deviceDict: [String: Any] = [
+            "udid": udid,
+            "name": name,
+            "model": model,
+            "ip": ip,
+            "ios_version": version,
+            "battery": battery >= 0 ? battery : 100,
+            "vnc_port": 5900,
+            "status": "online"
+        ]
+        
+        let initDict: [String: Any] = [
+            "type": "init",
+            "devices": [deviceDict],
+            "serverInfo": ["ip": ip, "port": 9898]
+        ]
+        
+        if let data = try? JSONSerialization.data(withJSONObject: initDict, options: []),
+           let jsonStr = String(data: data, encoding: .utf8) {
+            sendWebSocketText(jsonStr)
+        }
     }
     
     // MARK: - WebSocket Frames Parsing
@@ -428,10 +445,15 @@ class LocalConnection {
         let base64 = jpegData.base64EncodedString()
         let udid = UserDefaults.standard.string(forKey: "iControl_device_udid") ?? "local_device"
         
-        let payload = """
-        {"type":"device_screenshot","udid":"\(udid)","imageBase64":"\(base64)"}
-        """
-        sendWebSocketText(payload)
+        let dict: [String: Any] = [
+            "type": "device_screenshot",
+            "udid": udid,
+            "imageBase64": base64
+        ]
+        if let data = try? JSONSerialization.data(withJSONObject: dict, options: []),
+           let jsonStr = String(data: data, encoding: .utf8) {
+            sendWebSocketText(jsonStr)
+        }
     }
     
     func sendWebSocketText(_ text: String) {
