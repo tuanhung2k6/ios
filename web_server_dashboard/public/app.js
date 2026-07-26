@@ -1599,42 +1599,58 @@ function showDeviceDetail(udid) {
 setTimeout(function() { showToast('?? iOSControl Pro v3.0', 'Server s?n s�ng. Ch? thi?t b? k?t n?i...', 'system', 5000); }, 800);
 
 // ──────────────────────────────────────────────────────────────
-// MONACO EDITOR CDN INITIALIZATION
+// SAFE MONACO EDITOR CDN INITIALIZATION WITH TIMEOUT
 // ──────────────────────────────────────────────────────────────
-if (typeof require !== 'undefined') {
-    require.config({ paths: { vs: 'https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs' } });
-    require(['vs/editor/editor.main'], function () {
-        const initialCode = `-- iOSControl Lua Script
--- Nhập Lua Script để điều khiển thiết bị...
-tap(100, 200)
-sleep(1)
-swipe(100, 500, 100, 200, 0.5)
-`;
-        monacoEditor = monaco.editor.create(document.getElementById('editor-container'), {
-            value: initialCode,
-            language: 'lua',
-            theme: 'vs-dark',
-            automaticLayout: true,
-            fontFamily: "'JetBrains Mono', monospace",
-            fontSize: 13,
-            minimap: { enabled: false }
-        });
-        
-        // Relay change events to app logic
-        monacoEditor.onDidChangeModelContent(function() {
-            codeTextarea.value = monacoEditor.getValue();
-            if (typeof window._onMonacoInput === 'function') {
-                window._onMonacoInput();
-            }
-        });
-    });
-} else {
-    console.warn("Monaco Editor CDN is offline or blocked. Falling back to default textarea.");
+(function initSafeEditor() {
     const textarea = document.getElementById('code-textarea');
-    if (textarea) textarea.style.display = 'block';
     const container = document.getElementById('editor-container');
-    if (container) container.style.display = 'none';
-}
+    if (textarea) textarea.style.display = 'block';
+
+    if (typeof require !== 'undefined') {
+        let loaded = false;
+        const monacoTimer = setTimeout(() => {
+            if (!loaded) {
+                console.warn("[Editor] Monaco CDN timeout. Safely using native Lua editor.");
+                if (textarea) textarea.style.display = 'block';
+                if (container) container.style.display = 'none';
+            }
+        }, 1500);
+
+        try {
+            require.config({ paths: { vs: 'https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs' } });
+            require(['vs/editor/editor.main'], function () {
+                loaded = true;
+                clearTimeout(monacoTimer);
+                if (container && typeof monaco !== 'undefined') {
+                    const initialCode = (textarea && textarea.value.trim().length > 0)
+                        ? textarea.value
+                        : `-- iOSControl Lua Script\ntap(100, 200)\nsleep(1)\nswipe(100, 500, 100, 200, 0.5)\n`;
+                    monacoEditor = monaco.editor.create(container, {
+                        value: initialCode,
+                        language: 'lua',
+                        theme: 'vs-dark',
+                        automaticLayout: true,
+                        fontFamily: "'JetBrains Mono', monospace",
+                        fontSize: 13,
+                        minimap: { enabled: false }
+                    });
+                    if (textarea) textarea.style.display = 'none';
+                    container.style.display = 'block';
+                    monacoEditor.onDidChangeModelContent(function() {
+                        if (textarea) textarea.value = monacoEditor.getValue();
+                    });
+                }
+            });
+        } catch (e) {
+            clearTimeout(monacoTimer);
+            if (textarea) textarea.style.display = 'block';
+            if (container) container.style.display = 'none';
+        }
+    } else {
+        if (textarea) textarea.style.display = 'block';
+        if (container) container.style.display = 'none';
+    }
+})();
 
 // ──────────────────────────────────────────────────────────────
 // PREMIUM MAGNIFIER GLASS & COLOR COORDINATE PICKER (HALLMARK STYLE)

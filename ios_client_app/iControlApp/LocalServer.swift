@@ -388,6 +388,10 @@ class LocalConnection {
             if let text = String(data: payload, encoding: .utf8) {
                 handleIncomingWebSocketText(text)
             }
+        } else if opcode == 0x09 { // Ping frame -> Respond with Pong (0x8A)
+            var pongFrame = Data([0x8A, UInt8(payload.count)])
+            pongFrame.append(payload)
+            connection.send(content: pongFrame, completion: .contentProcessed({ _ in }))
         } else if opcode == 0x08 { // Connection close
             close()
         }
