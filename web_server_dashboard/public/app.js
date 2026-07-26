@@ -307,6 +307,7 @@ function openInfoTab(udid) {
 
 // ── Device Info Panel ──────────────────────────────────
 function renderDeviceInfoPanel() {
+    if (!deviceInfoPanelEl) return;
     const device = connectedDevices.find(d => d.udid === selectedDeviceUdid);
     if (!device) {
         deviceInfoPanelEl.innerHTML = `
@@ -553,8 +554,8 @@ function updateActionButtons() {
     const device = connectedDevices.find(d => d.udid === selectedDeviceUdid);
     const hasDevice = !!device;
     const isRunning = hasDevice && device.status === 'running';
-    runBtn.disabled = !hasDevice || isRunning;
-    stopBtn.disabled = !hasDevice || !isRunning;
+    if (runBtn) runBtn.disabled = !hasDevice || isRunning;
+    if (stopBtn) stopBtn.disabled = !hasDevice || !isRunning;
 }
 
 if (runBtn) runBtn.addEventListener('click', () => {
@@ -713,7 +714,9 @@ const gridStreamLabelEl = $('grid-stream-label');
 // Set CSS variable for grid column count
 function setGridCols(cols) {
     gridCols = cols;
-    gridContainerEl.style.setProperty('--grid-cols', cols);
+    if (gridContainerEl) {
+        gridContainerEl.style.setProperty('--grid-cols', cols);
+    }
     document.querySelectorAll('.grid-size-btn').forEach(btn => {
         btn.classList.toggle('active', parseInt(btn.dataset.cols) === cols);
     });
@@ -727,10 +730,14 @@ document.querySelectorAll('.grid-size-btn').forEach(btn => {
 
 // Render the entire grid from current device list
 function renderGrid() {
+    if (!gridContainerEl) return;
+    
     // Update badge count
     const online = connectedDevices.filter(d => d.status !== 'offline');
-    gridDeviceCountEl.textContent = online.length || '';
-    gridDeviceCountEl.dataset.zero = online.length === 0 ? 'true' : 'false';
+    if (gridDeviceCountEl) {
+        gridDeviceCountEl.textContent = online.length || '';
+        gridDeviceCountEl.dataset.zero = online.length === 0 ? 'true' : 'false';
+    }
 
     if (connectedDevices.length === 0) {
         gridContainerEl.innerHTML = `
@@ -851,6 +858,7 @@ function createGridTile(device) {
 
 // Live update a tile's status without full re-render
 function updateGridTile(device) {
+    if (!gridContainerEl) return;
     const tile = gridContainerEl.querySelector(`.device-tile[data-udid="${device.udid}"]`);
     if (!tile) { renderGrid(); return; }
 
@@ -874,7 +882,7 @@ function updateGridTile(device) {
 
     // Update badge
     const online = connectedDevices.filter(d => d.status !== 'offline').length;
-    gridDeviceCountEl.textContent = online || '';
+    if (gridDeviceCountEl) gridDeviceCountEl.textContent = online || '';
 }
 
 // Update screen image in a specific tile
@@ -898,16 +906,18 @@ function updateGridTileScreen(udid, imageBase64) {
 }
 
 // Grid screenshot-all button
-$('grid-screenshot-all').addEventListener('click', () => {
+const btnGridScr = $('grid-screenshot-all');
+if (btnGridScr) btnGridScr.addEventListener('click', () => {
     if (connectedDevices.length === 0) return;
     connectedDevices.forEach(d => sendWs({ action: 'request_screenshot', targetUdid: d.udid }));
     logToConsole('system', `Chụp màn hình ${connectedDevices.length} thiết bị...`);
 });
 
 // Grid stream toggle
-$('grid-stream-all').addEventListener('click', () => {
+const btnGridStream = $('grid-stream-all');
+if (btnGridStream) btnGridStream.addEventListener('click', () => {
     gridStreamActive = !gridStreamActive;
-    gridStreamLabelEl.textContent = gridStreamActive ? 'Tắt Stream Tất Cả' : 'Bật Stream Tất Cả';
+    if (gridStreamLabelEl) gridStreamLabelEl.textContent = gridStreamActive ? 'Tắt Stream Tất Cả' : 'Bật Stream Tất Cả';
 
     // Toggle LIVE badges
     document.querySelectorAll('.tile-live-badge').forEach(b => b.classList.toggle('active', gridStreamActive));
@@ -925,14 +935,16 @@ $('grid-stream-all').addEventListener('click', () => {
     }
 });
 
-$('grid-run-all').addEventListener('click', () => {
+const btnGridRun = $('grid-run-all');
+if (btnGridRun) btnGridRun.addEventListener('click', () => {
     const content = document.getElementById('code-textarea').value.trim();
     if (!content) { logToConsole('warn', 'Editor trống'); return; }
     sendWs({ action: 'run_all', script: content, scriptName: document.getElementById('script-name').value.trim() });
     logToConsole('info', `Chạy script trên ${connectedDevices.length} thiết bị...`);
 });
 
-$('grid-stop-all').addEventListener('click', () => {
+const btnGridStop = $('grid-stop-all');
+if (btnGridStop) btnGridStop.addEventListener('click', () => {
     sendWs({ action: 'stop_all' });
     logToConsole('warn', 'Dừng tất cả thiết bị...');
 });
