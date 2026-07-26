@@ -131,8 +131,9 @@ class LocalConnection {
         let pathParts = fullPath.components(separatedBy: "?")
         let path = pathParts[0]
         
-        // WebSocket Handshake Detection
-        if requestStr.contains("Upgrade: websocket") {
+        // WebSocket Handshake Detection (Case-insensitive)
+        let lowerRequest = requestStr.lowercased()
+        if lowerRequest.contains("upgrade:") && lowerRequest.contains("websocket") {
             handleWebSocketHandshake(requestStr: requestStr)
             return
         }
