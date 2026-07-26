@@ -215,14 +215,14 @@ class ViewController: UIViewController {
         let titleL = cardSectionTitle("📡 TRẠNG THÁI KẾT NỐI WebSocket")
         statusCard.addSubview(titleL)
         
-        wsStatusDot.backgroundColor = red
+        wsStatusDot.backgroundColor = emerald
         wsStatusDot.layer.cornerRadius = 6
         wsStatusDot.translatesAutoresizingMaskIntoConstraints = false
         statusCard.addSubview(wsStatusDot)
         
-        wsStatusLabel.text = "Chưa kết nối"
+        wsStatusLabel.text = "Máy chủ sẵn sàng"
         wsStatusLabel.font = UIFont.systemFont(ofSize: 13, weight: .bold)
-        wsStatusLabel.textColor = textMuted
+        wsStatusLabel.textColor = emerald
         wsStatusLabel.translatesAutoresizingMaskIntoConstraints = false
         statusCard.addSubview(wsStatusLabel)
         

@@ -13,9 +13,6 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         // Start Local HTTP/WebSocket Server on port 9898
         LocalServer.shared.start(port: 9898)
         
-        // Auto-connect client engine to local server
-        WebSocketClient.shared.connect(ip: "127.0.0.1", port: "9898")
-        
         // Start background survival audio loop
         setupBackgroundAudio()
         
