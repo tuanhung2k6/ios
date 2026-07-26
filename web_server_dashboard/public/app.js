@@ -645,7 +645,7 @@ if (codeTextarea) codeTextarea.addEventListener('keydown', e => {
 // ── Console Logger ─────────────────────────────────────
 
 function logToConsole(type, message, time) {
-    const filterVal = logFilterEl.value;
+    const filterVal = logFilterEl ? logFilterEl.value : 'all';
     if (filterVal !== 'all' && type !== filterVal) return;
 
     const line = document.createElement('div');
@@ -658,7 +658,8 @@ function logToConsole(type, message, time) {
 
     const timeSpan = document.createElement('span');
     timeSpan.className = 'log-time';
-    timeSpan.textContent = time || new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    const formattedTime = time || new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    timeSpan.textContent = formattedTime + ' ';
 
     const msgSpan = document.createElement('span');
     msgSpan.className = 'log-msg';

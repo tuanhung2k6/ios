@@ -612,7 +612,70 @@ class ViewController: UIViewController {
     
     @objc private func onLogReceived(_ notification: Notification) {
         guard let msg = notification.userInfo?["message"] as? String else { return }
-        DispatchQueue.main.async { self.appendLog(msg) }
+        DispatchQueue.main.async {
+            self.appendLog(msg)
+            self.showLogToast(msg)
+        }
+    }
+    
+    private func showLogToast(_ message: String) {
+        guard let window = view.window ?? UIApplication.shared.windows.first else { return }
+        
+        let toast = UIView()
+        toast.backgroundColor = UIColor(red: 15/255, green: 23/255, blue: 42/255, alpha: 0.95)
+        toast.layer.cornerRadius = 12
+        toast.layer.borderWidth = 1
+        toast.layer.borderColor = UIColor(red: 6/255, green: 182/255, blue: 212/255, alpha: 0.6).cgColor
+        toast.translatesAutoresizingMaskIntoConstraints = false
+        toast.layer.shadowColor = UIColor.black.cgColor
+        toast.layer.shadowOffset = CGSize(width: 0, height: 4)
+        toast.layer.shadowRadius = 10
+        toast.layer.shadowOpacity = 0.5
+
+        let icon = UILabel()
+        icon.text = "⚡"
+        icon.font = UIFont.systemFont(ofSize: 13)
+        icon.translatesAutoresizingMaskIntoConstraints = false
+
+        let label = UILabel()
+        label.textColor = textPrimary
+        label.font = UIFont.systemFont(ofSize: 12, weight: .bold)
+        label.numberOfLines = 2
+        label.text = message
+        label.translatesAutoresizingMaskIntoConstraints = false
+
+        toast.addSubview(icon)
+        toast.addSubview(label)
+        window.addSubview(toast)
+
+        NSLayoutConstraint.activate([
+            toast.topAnchor.constraint(equalTo: window.safeAreaLayoutGuide.topAnchor, constant: 12),
+            toast.centerXAnchor.constraint(equalTo: window.centerXAnchor),
+            toast.widthAnchor.constraint(lessThanOrEqualTo: window.widthAnchor, constant: -32),
+            
+            icon.leadingAnchor.constraint(equalTo: toast.leadingAnchor, constant: 12),
+            icon.centerYAnchor.constraint(equalTo: toast.centerYAnchor),
+
+            label.leadingAnchor.constraint(equalTo: icon.trailingAnchor, constant: 8),
+            label.trailingAnchor.constraint(equalTo: toast.trailingAnchor, constant: -12),
+            label.topAnchor.constraint(equalTo: toast.topAnchor, constant: 10),
+            label.bottomAnchor.constraint(equalTo: toast.bottomAnchor, constant: -10)
+        ])
+
+        toast.alpha = 0
+        toast.transform = CGAffineTransform(translationX: 0, y: -20)
+
+        UIView.animate(withDuration: 0.3, delay: 0, options: .curveEaseOut, animations: {
+            toast.alpha = 1
+            toast.transform = .identity
+        }) { _ in
+            UIView.animate(withDuration: 0.3, delay: 2.2, options: .curveEaseIn, animations: {
+                toast.alpha = 0
+                toast.transform = CGAffineTransform(translationX: 0, y: -20)
+            }) { _ in
+                toast.removeFromSuperview()
+            }
+        }
     }
     
     @objc private func onRefreshScripts() {

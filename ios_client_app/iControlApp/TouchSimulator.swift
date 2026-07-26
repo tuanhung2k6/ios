@@ -103,67 +103,69 @@ class TouchSimulator {
     
     /// Tap at logical coordinates (Point)
     func tap(x: CGFloat, y: CGFloat) {
-        print("[TouchSimulator] Tapping at (\(x), \(y))")
-        postTouchNotification(x: x, y: y)
+        let ix = Int(round(x))
+        let iy = Int(round(y))
+        print("[TouchSimulator] Tapping at (\(ix), \(iy))")
+        postTouchNotification(x: CGFloat(ix), y: CGFloat(iy))
         
         if ptFakeTouchLoaded {
-            invokePTFakeTouch(selectorName: "touchDownAtPoint:", point: CGPoint(x: x, y: y))
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                self.invokePTFakeTouch(selectorName: "touchUpAtPoint:", point: CGPoint(x: x, y: y))
+            invokePTFakeTouch(selectorName: "touchDownAtPoint:", point: CGPoint(x: ix, y: iy))
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
+                self.invokePTFakeTouch(selectorName: "touchUpAtPoint:", point: CGPoint(x: ix, y: iy))
             }
-        } else {
-            // ZXTouch TCP command sequence
-            sendZXCommand("10;\(x);\(y);1") // Down
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                self.sendZXCommand("12;\(x);\(y);1") // Up
-            }
+        }
+        
+        // ZXTouch TCP command sequence (requires rounded integers)
+        sendZXCommand("10;\(ix);\(iy);1") // Touch Down
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
+            self.sendZXCommand("12;\(ix);\(iy);1") // Touch Up
+        }
+        
+        // In-app UIKit action fallback
+        DispatchQueue.main.async {
+            self.performUIKitTap(at: CGPoint(x: ix, y: iy))
         }
     }
     
     /// Swipe from start point to end point with duration
     func swipe(fromX: CGFloat, fromY: CGFloat, toX: CGFloat, toY: CGFloat, duration: Double = 0.3) {
-        print("[TouchSimulator] Swiping from (\(fromX), \(fromY)) to (\(toX), \(toY)) in \(duration)s")
-        postTouchNotification(x: fromX, y: fromY)
+        let ix1 = Int(round(fromX))
+        let iy1 = Int(round(fromY))
+        let ix2 = Int(round(toX))
+        let iy2 = Int(round(toY))
+        print("[TouchSimulator] Swiping from (\(ix1), \(iy1)) to (\(ix2), \(iy2)) in \(duration)s")
+        postTouchNotification(x: CGFloat(ix1), y: CGFloat(iy1))
+        
+        let steps = 15
+        let stepDelay = duration / Double(steps)
         
         if ptFakeTouchLoaded {
-            let steps = 20
-            let stepDelay = duration / Double(steps)
-            let from = CGPoint(x: fromX, y: fromY)
-            let to = CGPoint(x: toX, y: toY)
-            
+            let from = CGPoint(x: ix1, y: iy1)
+            let to = CGPoint(x: ix2, y: iy2)
             invokePTFakeTouch(selectorName: "touchDownAtPoint:", point: from)
-            
             for i in 1...steps {
                 let progress = CGFloat(i) / CGFloat(steps)
-                let currentPoint = CGPoint(
-                    x: from.x + (to.x - from.x) * progress,
-                    y: from.y + (to.y - from.y) * progress
-                )
-                
+                let cx = Int(round(CGFloat(ix1) + CGFloat(ix2 - ix1) * progress))
+                let cy = Int(round(CGFloat(iy1) + CGFloat(iy2 - iy1) * progress))
                 DispatchQueue.main.asyncAfter(deadline: .now() + (Double(i) * stepDelay)) {
-                    self.invokePTFakeTouch(selectorName: "touchMoveAtPoint:", point: currentPoint)
+                    self.invokePTFakeTouch(selectorName: "touchMoveAtPoint:", point: CGPoint(x: cx, y: cy))
                     if i == steps {
                         self.invokePTFakeTouch(selectorName: "touchUpAtPoint:", point: to)
                     }
                 }
             }
-        } else {
-            // ZXTouch TCP command sequence for swipe
-            let steps = 15
-            let stepDelay = duration / Double(steps)
-            
-            sendZXCommand("10;\(fromX);\(fromY);1")
-            
-            for i in 1...steps {
-                let progress = CGFloat(i) / CGFloat(steps)
-                let cx = fromX + (toX - fromX) * progress
-                let cy = fromY + (toY - fromY) * progress
-                
-                DispatchQueue.main.asyncAfter(deadline: .now() + (Double(i) * stepDelay)) {
-                    self.sendZXCommand("11;\(cx);\(cy);1")
-                    if i == steps {
-                        self.sendZXCommand("12;\(toX);\(toY);1")
-                    }
+        }
+        
+        // ZXTouch TCP command sequence for swipe with integer parameters
+        sendZXCommand("10;\(ix1);\(iy1);1")
+        for i in 1...steps {
+            let progress = CGFloat(i) / CGFloat(steps)
+            let cx = Int(round(CGFloat(ix1) + CGFloat(ix2 - ix1) * progress))
+            let cy = Int(round(CGFloat(iy1) + CGFloat(iy2 - iy1) * progress))
+            DispatchQueue.main.asyncAfter(deadline: .now() + (Double(i) * stepDelay)) {
+                self.sendZXCommand("11;\(cx);\(cy);1")
+                if i == steps {
+                    self.sendZXCommand("12;\(ix2);\(iy2);1")
                 }
             }
         }
@@ -171,30 +173,33 @@ class TouchSimulator {
     
     /// Touch Down raw event
     func touchDown(x: CGFloat, y: CGFloat, fingerId: Int = 1) {
-        postTouchNotification(x: x, y: y)
+        let ix = Int(round(x))
+        let iy = Int(round(y))
+        postTouchNotification(x: CGFloat(ix), y: CGFloat(iy))
         if ptFakeTouchLoaded {
-            invokePTFakeTouch(selectorName: "touchDownAtPoint:pointId:", point: CGPoint(x: x, y: y), fingerId: fingerId)
-        } else {
-            sendZXCommand("10;\(x);\(y);\(fingerId)")
+            invokePTFakeTouch(selectorName: "touchDownAtPoint:pointId:", point: CGPoint(x: ix, y: iy), fingerId: fingerId)
         }
+        sendZXCommand("10;\(ix);\(iy);\(fingerId)")
     }
     
     /// Touch Move raw event
     func touchMove(x: CGFloat, y: CGFloat, fingerId: Int = 1) {
+        let ix = Int(round(x))
+        let iy = Int(round(y))
         if ptFakeTouchLoaded {
-            invokePTFakeTouch(selectorName: "touchMoveAtPoint:pointId:", point: CGPoint(x: x, y: y), fingerId: fingerId)
-        } else {
-            sendZXCommand("11;\(x);\(y);\(fingerId)")
+            invokePTFakeTouch(selectorName: "touchMoveAtPoint:pointId:", point: CGPoint(x: ix, y: iy), fingerId: fingerId)
         }
+        sendZXCommand("11;\(ix);\(iy);\(fingerId)")
     }
     
     /// Touch Up raw event
     func touchUp(x: CGFloat, y: CGFloat, fingerId: Int = 1) {
+        let ix = Int(round(x))
+        let iy = Int(round(y))
         if ptFakeTouchLoaded {
-            invokePTFakeTouch(selectorName: "touchUpAtPoint:pointId:", point: CGPoint(x: x, y: y), fingerId: fingerId)
-        } else {
-            sendZXCommand("12;\(x);\(y);\(fingerId)")
+            invokePTFakeTouch(selectorName: "touchUpAtPoint:pointId:", point: CGPoint(x: ix, y: iy), fingerId: fingerId)
         }
+        sendZXCommand("12;\(ix);\(iy);\(fingerId)")
     }
     
     /// Send visual notification to draw glowing touch indicators on HUD
@@ -204,5 +209,15 @@ class TouchSimulator {
             object: nil,
             userInfo: ["x": x, "y": y]
         )
+    }
+
+    private func performUIKitTap(at point: CGPoint) {
+        guard let window = UIApplication.shared.windows.first(where: { $0.isKeyWindow }) ?? UIApplication.shared.windows.first else { return }
+        let hitView = window.hitTest(point, with: nil)
+        if let control = hitView as? UIControl {
+            control.sendActions(for: .touchUpInside)
+        } else if let button = hitView as? UIButton {
+            button.sendActions(for: .touchUpInside)
+        }
     }
 }
