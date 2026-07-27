@@ -197,7 +197,7 @@ class FloatingWindow: UIWindow {
         self.isHidden = true
     }
     
-    // MARK: - Touch Indicator Overlay Animation
+    // MARK: - Touch Indicator Overlay Animation (Red Glowing Dot)
     
     @objc private func handleTouchIndicatorNotification(_ notification: Notification) {
         guard let userInfo = notification.userInfo,
@@ -209,20 +209,42 @@ class FloatingWindow: UIWindow {
     
     func showTouchIndicator(at point: CGPoint) {
         DispatchQueue.main.async {
-            let indicator = UIView(frame: CGRect(x: point.x - 15, y: point.y - 15, width: 30, height: 30))
-            indicator.backgroundColor = UIColor(red: 6/255, green: 182/255, blue: 212/255, alpha: 0.4) // Cyan shockwave
-            indicator.layer.cornerRadius = 15
-            indicator.layer.borderWidth = 2
-            indicator.layer.borderColor = UIColor(red: 6/255, green: 182/255, blue: 212/255, alpha: 0.95).cgColor
-            indicator.isUserInteractionEnabled = false
+            guard let parentView = UIApplication.shared.keyWindowCompat ?? self.superview ?? self else { return }
             
-            self.addSubview(indicator)
+            // Red Glowing Touch Target Dot (Chấm đỏ rực rỡ)
+            let redDot = UIView(frame: CGRect(x: point.x - 14, y: point.y - 14, width: 28, height: 28))
+            redDot.backgroundColor = UIColor(red: 244/255, green: 63/255, blue: 94/255, alpha: 0.9) // Bright Crimson Red
+            redDot.layer.cornerRadius = 14
+            redDot.layer.borderWidth = 2.5
+            redDot.layer.borderColor = UIColor.white.cgColor
+            redDot.layer.shadowColor = UIColor(red: 244/255, green: 63/255, blue: 94/255, alpha: 1.0).cgColor
+            redDot.layer.shadowOffset = .zero
+            redDot.layer.shadowRadius = 10
+            redDot.layer.shadowOpacity = 1.0
+            redDot.isUserInteractionEnabled = false
             
-            UIView.animate(withDuration: 0.45, delay: 0, options: .curveEaseOut, animations: {
-                indicator.transform = CGAffineTransform(scaleX: 2.0, y: 2.0)
-                indicator.alpha = 0
+            // White Inner Core Dot
+            let innerCore = UIView(frame: CGRect(x: 8, y: 8, width: 12, height: 12))
+            innerCore.backgroundColor = .white
+            innerCore.layer.cornerRadius = 6
+            innerCore.isUserInteractionEnabled = false
+            redDot.addSubview(innerCore)
+            
+            parentView.addSubview(redDot)
+            
+            redDot.transform = CGAffineTransform(scaleX: 0.3, y: 0.3)
+            redDot.alpha = 0
+            
+            UIView.animate(withDuration: 0.15, delay: 0, options: .curveEaseOut, animations: {
+                redDot.alpha = 1
+                redDot.transform = .identity
             }) { _ in
-                indicator.removeFromSuperview()
+                UIView.animate(withDuration: 0.4, delay: 0.1, options: .curveEaseOut, animations: {
+                    redDot.transform = CGAffineTransform(scaleX: 2.2, y: 2.2)
+                    redDot.alpha = 0
+                }) { _ in
+                    redDot.removeFromSuperview()
+                }
             }
         }
     }

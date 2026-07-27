@@ -2727,6 +2727,13 @@ function setupScreenDirectControl() {
             logToConsole('info', `↔️ Live Swipe: (${startX}, ${startY}) ➔ (${endX}, ${endY})`);
             showToast('↔️ Direct Swipe', `Vuốt (${startX}, ${startY}) ➔ (${endX}, ${endY})`, 'info');
         }
+
+        // Auto request updated screen frame 250ms after tap/swipe
+        setTimeout(() => {
+            if (selectedDeviceUdid) {
+                sendWs({ action: 'request_screenshot', targetUdid: selectedDeviceUdid });
+            }
+        }, 250);
     };
 
     screenImg.addEventListener('mousedown', handleDown);

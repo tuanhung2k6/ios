@@ -213,11 +213,28 @@ class TouchSimulator {
 
     private func performUIKitTap(at point: CGPoint) {
         guard let window = UIApplication.shared.keyWindowCompat else { return }
-        let hitView = window.hitTest(point, with: nil)
-        if let control = hitView as? UIControl {
-            control.sendActions(for: .touchUpInside)
-        } else if let button = hitView as? UIButton {
-            button.sendActions(for: .touchUpInside)
+        guard let hitView = window.hitTest(point, with: nil) else { return }
+        
+        var curr: UIView? = hitView
+        while let view = curr {
+            if let control = view as? UIControl {
+                control.sendActions(for: .touchDown)
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.06) {
+                    control.sendActions(for: .touchUpInside)
+                }
+                return
+            }
+            if let recognizers = view.gestureRecognizers {
+                for recognizer in recognizers {
+                    if recognizer.isEnabled {
+                        let sel = Selector(("handleTap:"))
+                        if recognizer.responds(to: sel) {
+                            recognizer.perform(sel, with: recognizer)
+                        }
+                    }
+                }
+            }
+            curr = view.superview
         }
     }
 }
