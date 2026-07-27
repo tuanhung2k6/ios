@@ -408,14 +408,16 @@ class LocalConnection {
             DispatchQueue.main.async {
                 self.sendInitData()
             }
-        } else if action == "run_script" {
+        } else if action == "run_script" || action == "run_all" {
             if let script = json["script"] as? String {
                 let scriptName = json["scriptName"] as? String ?? "unnamed.lua"
+                let loopCount = json["loopCount"] as? Int ?? 1
+                let loopDelay = json["loopDelay"] as? Double ?? 0.0
                 DispatchQueue.main.async {
-                    WebSocketClient.shared.runScript(content: script, name: scriptName)
+                    WebSocketClient.shared.runScript(content: script, name: scriptName, loopCount: loopCount, loopDelay: loopDelay)
                 }
             }
-        } else if action == "stop_script" {
+        } else if action == "stop_script" || action == "stop_all" {
             DispatchQueue.main.async {
                 NotificationCenter.default.post(name: Notification.Name("TerminateScriptNotification"), object: nil)
             }

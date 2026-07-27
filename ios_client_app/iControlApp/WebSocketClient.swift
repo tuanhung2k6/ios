@@ -227,21 +227,35 @@ class WebSocketClient: NSObject {
     }
     
     func sendDeviceStatus(status: String) {
+        let udid = UserDefaults.standard.string(forKey: "iControl_device_udid") ?? "local_device"
         let statusPayload: [String: Any] = [
-            "type": "status_report",
-            "status": status
+            "type": "device_status_change",
+            "device": [
+                "udid": udid,
+                "status": status
+            ]
         ]
         sendJSON(statusPayload)
+        if let data = try? JSONSerialization.data(withJSONObject: statusPayload, options: []),
+           let jsonStr = String(data: data, encoding: .utf8) {
+            LocalServer.shared.broadcastToWebClients(text: jsonStr)
+        }
     }
     
     func sendLog(message: String) {
+        let udid = UserDefaults.standard.string(forKey: "iControl_device_udid") ?? "local_device"
         let logPayload: [String: Any] = [
-            "type": "log",
-            "message": message
+            "type": "device_log",
+            "udid": udid,
+            "message": message,
+            "timestamp": Date().timeIntervalSince1970
         ]
         sendJSON(logPayload)
+        if let data = try? JSONSerialization.data(withJSONObject: logPayload, options: []),
+           let jsonStr = String(data: data, encoding: .utf8) {
+            LocalServer.shared.broadcastToWebClients(text: jsonStr)
+        }
         FloatingWindow.shared.addLog(message)
-        // Notify ViewController log card
         NotificationCenter.default.post(name: Notification.Name.wsLog, object: nil, userInfo: ["message": message])
     }
     
