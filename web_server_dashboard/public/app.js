@@ -278,7 +278,7 @@ function updateDeviceInList(updatedDevice) {
 
 function selectDevice(udid) {
     selectedDeviceUdid = udid;
-    selectTargetEl.value = udid;
+    if (selectTargetEl) selectTargetEl.value = udid;
     renderDeviceList();
     updateActionButtons();
     renderDeviceInfoPanel();
@@ -2675,51 +2675,65 @@ function setupScreenDirectControl() {
     let startX = 0, startY = 0;
     let startTime = 0;
 
-    screenImg.addEventListener('mousedown', (e) => {
+    function getCoords(e) {
+        const rect = screenImg.getBoundingClientRect();
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+        const devW = (deviceResolution && deviceResolution.w) ? deviceResolution.w : 390;
+        const devH = (deviceResolution && deviceResolution.h) ? deviceResolution.h : 844;
+        
+        const scaleX = devW / rect.width;
+        const scaleY = devH / rect.height;
+        
+        const x = Math.round((clientX - rect.left) * scaleX);
+        const y = Math.round((clientY - rect.top) * scaleY);
+        return { x: Math.max(0, Math.min(devW, x)), y: Math.max(0, Math.min(devH, y)), clientX, clientY };
+    }
+
+    const handleDown = (e) => {
         if (!selectedDeviceUdid) return;
         isDragging = true;
         startTime = Date.now();
-        const rect = screenImg.getBoundingClientRect();
-        
-        // Scale to logical iOS screen dimensions
-        const scaleX = (screenImg.naturalWidth || 375) / rect.width;
-        const scaleY = (screenImg.naturalHeight || 812) / rect.height;
-        
-        startX = Math.round((e.clientX - rect.left) * scaleX);
-        startY = Math.round((e.clientY - rect.top) * scaleY);
-    });
+        const coords = getCoords(e);
+        startX = coords.x;
+        startY = coords.y;
+    };
 
-    screenImg.addEventListener('mouseup', (e) => {
+    const handleUp = (e) => {
         if (!isDragging || !selectedDeviceUdid) return;
         isDragging = false;
-        const rect = screenImg.getBoundingClientRect();
-        const scaleX = (screenImg.naturalWidth || 375) / rect.width;
-        const scaleY = (screenImg.naturalHeight || 812) / rect.height;
         
-        const endX = Math.round((e.clientX - rect.left) * scaleX);
-        const endY = Math.round((e.clientY - rect.top) * scaleY);
+        const endEvt = e.changedTouches ? e.changedTouches[0] : e;
+        const rect = screenImg.getBoundingClientRect();
+        const devW = (deviceResolution && deviceResolution.w) ? deviceResolution.w : 390;
+        const devH = (deviceResolution && deviceResolution.h) ? deviceResolution.h : 844;
+        const scaleX = devW / rect.width;
+        const scaleY = devH / rect.height;
+
+        const endX = Math.max(0, Math.min(devW, Math.round((endEvt.clientX - rect.left) * scaleX)));
+        const endY = Math.max(0, Math.min(devH, Math.round((endEvt.clientY - rect.top) * scaleY)));
         const dist = Math.hypot(endX - startX, endY - startY);
         const duration = Math.min(1.0, Math.max(0.15, (Date.now() - startTime) / 1000.0));
 
-        // Create visual touch ripple
-        createTouchRipple(containerBox, e.clientX, e.clientY);
+        createTouchRipple(containerBox, endEvt.clientX, endEvt.clientY);
 
-        if (dist < 10) {
-            // Send direct tap
+        if (dist < 12) {
             sendWs({ action: 'direct_tap', targetUdid: selectedDeviceUdid, x: startX, y: startY });
             logToConsole('info', `👆 Live Tap: (${startX}, ${startY})`);
             showToast('👆 Direct Tap', `Tap tại (${startX}, ${startY})`, 'success');
         } else {
-            // Send direct swipe
             sendWs({ action: 'direct_swipe', targetUdid: selectedDeviceUdid, x1: startX, y1: startY, x2: endX, y2: endY, duration: duration });
             logToConsole('info', `↔️ Live Swipe: (${startX}, ${startY}) ➔ (${endX}, ${endY})`);
             showToast('↔️ Direct Swipe', `Vuốt (${startX}, ${startY}) ➔ (${endX}, ${endY})`, 'info');
         }
-    });
+    };
 
-    screenImg.addEventListener('mouseleave', () => {
-        isDragging = false;
-    });
+    screenImg.addEventListener('mousedown', handleDown);
+    screenImg.addEventListener('mouseup', handleUp);
+    screenImg.addEventListener('touchstart', handleDown, { passive: true });
+    screenImg.addEventListener('touchend', handleUp, { passive: true });
+    screenImg.addEventListener('mouseleave', () => { isDragging = false; });
 }
 
 // Auto setup on load

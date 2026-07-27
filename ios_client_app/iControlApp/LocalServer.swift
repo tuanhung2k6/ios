@@ -441,7 +441,7 @@ class LocalConnection {
     }
 
     private func sendScreenshotToWeb() {
-        guard let window = UIApplication.shared.windows.first else { return }
+        guard let window = UIApplication.shared.windows.first(where: { $0.isKeyWindow }) ?? UIApplication.shared.windows.first else { return }
         let renderer = UIGraphicsImageRenderer(bounds: window.bounds)
         let image = renderer.image { ctx in
             window.drawHierarchy(in: window.bounds, afterScreenUpdates: true)
@@ -453,11 +453,13 @@ class LocalConnection {
         let dict: [String: Any] = [
             "type": "device_screenshot",
             "udid": udid,
-            "imageBase64": base64
+            "imageBase64": base64,
+            "width": Int(window.bounds.width),
+            "height": Int(window.bounds.height)
         ]
         if let data = try? JSONSerialization.data(withJSONObject: dict, options: []),
            let jsonStr = String(data: data, encoding: .utf8) {
-            sendWebSocketText(jsonStr)
+            broadcastToWebClients(text: jsonStr)
         }
     }
     
