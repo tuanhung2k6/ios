@@ -88,3 +88,16 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         return header
     }
 }
+
+extension UIApplication {
+    var keyWindowCompat: UIWindow? {
+        if #available(iOS 13.0, *) {
+            return connectedScenes
+                .compactMap { $0 as? UIWindowScene }
+                .flatMap { $0.windows }
+                .first { $0.isKeyWindow } ?? windows.first
+        } else {
+            return keyWindow ?? windows.first
+        }
+    }
+}

@@ -209,7 +209,7 @@ class WebSocketClient: NSObject {
     // MARK: - Screenshot Capture & Send
     
     func captureAndSendScreenshot() {
-        guard let window = UIApplication.shared.windows.first else { return }
+        guard let window = UIApplication.shared.keyWindowCompat else { return }
         let renderer = UIGraphicsImageRenderer(bounds: window.bounds)
         let image = renderer.image { ctx in
             window.drawHierarchy(in: window.bounds, afterScreenUpdates: true)

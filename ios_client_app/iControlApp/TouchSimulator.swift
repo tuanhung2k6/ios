@@ -212,7 +212,7 @@ class TouchSimulator {
     }
 
     private func performUIKitTap(at point: CGPoint) {
-        guard let window = UIApplication.shared.windows.first(where: { $0.isKeyWindow }) ?? UIApplication.shared.windows.first else { return }
+        guard let window = UIApplication.shared.keyWindowCompat else { return }
         let hitView = window.hitTest(point, with: nil)
         if let control = hitView as? UIControl {
             control.sendActions(for: .touchUpInside)

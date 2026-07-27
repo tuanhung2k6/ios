@@ -619,7 +619,7 @@ class ViewController: UIViewController {
     }
     
     private func showLogToast(_ message: String) {
-        guard let window = view.window ?? UIApplication.shared.windows.first else { return }
+        guard let window = view.window ?? UIApplication.shared.keyWindowCompat else { return }
         
         let toast = UIView()
         toast.backgroundColor = UIColor(red: 15/255, green: 23/255, blue: 42/255, alpha: 0.95)
