@@ -209,7 +209,7 @@ class FloatingWindow: UIWindow {
     
     func showTouchIndicator(at point: CGPoint) {
         DispatchQueue.main.async {
-            guard let parentView = UIApplication.shared.keyWindowCompat ?? self.superview ?? self else { return }
+            let parentView: UIView = UIApplication.shared.keyWindowCompat ?? self.superview ?? self
             
             // Red Glowing Touch Target Dot (Chấm đỏ rực rỡ)
             let redDot = UIView(frame: CGRect(x: point.x - 14, y: point.y - 14, width: 28, height: 28))

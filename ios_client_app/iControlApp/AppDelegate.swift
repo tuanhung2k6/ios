@@ -92,12 +92,12 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 extension UIApplication {
     var keyWindowCompat: UIWindow? {
         if #available(iOS 13.0, *) {
-            return connectedScenes
+            let activeWindows = connectedScenes
                 .compactMap { $0 as? UIWindowScene }
                 .flatMap { $0.windows }
-                .first { $0.isKeyWindow } ?? windows.first
+            return activeWindows.first { $0.isKeyWindow } ?? activeWindows.first
         } else {
-            return keyWindow ?? windows.first
+            return keyWindow
         }
     }
 }
