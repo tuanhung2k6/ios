@@ -13,6 +13,7 @@ class TouchSimulator {
     private init() {
         loadPTFakeTouch()
         setupZXTouchConnection()
+        setupIOHIDEventInjector()
     }
     
     /// Try to load PTFakeTouch library dynamically from jailbroken iOS system path
@@ -145,8 +146,66 @@ class TouchSimulator {
             let state = selectorName.contains("Down") ? 0 : (selectorName.contains("Move") ? 1 : 2)
             _ = function(ptClass, altSel, fingerId, point, state)
         }
+    // MARK: - Native IOHIDEvent System Digitizer Injector
+    
+    private typealias IOHIDEventCreateDigitizerFingerEventFunc = @convention(c) (
+        CFAllocator?, UInt64, UInt32, UInt32, UInt32, Double, Double, Double, Double, Double, UInt32, UInt32, UInt32, UInt32
+    ) -> UnsafeMutableRawPointer?
+    
+    private typealias IOHIDEventSystemClientCreateFunc = @convention(c) (CFAllocator?) -> UnsafeMutableRawPointer?
+    private typealias IOHIDEventSystemClientDispatchEventFunc = @convention(c) (UnsafeMutableRawPointer, UnsafeMutableRawPointer) -> Void
+
+    private var ioHIDClient: UnsafeMutableRawPointer?
+    private var ioHIDCreateFunc: IOHIDEventCreateDigitizerFingerEventFunc?
+    private var ioHIDDispatchFunc: IOHIDEventSystemClientDispatchEventFunc?
+
+    private func setupIOHIDEventInjector() {
+        guard let handle = dlopen(nil, RTLD_NOW) else { return }
+        
+        if let clientCreateSym = dlsym(handle, "IOHIDEventSystemClientCreate"),
+           let dispatchSym = dlsym(handle, "IOHIDEventSystemClientDispatchEvent"),
+           let createFingerSym = dlsym(handle, "IOHIDEventCreateDigitizerFingerEvent") {
+            
+            let clientCreate = unsafeBitCast(clientCreateSym, to: IOHIDEventSystemClientCreateFunc.self)
+            self.ioHIDDispatchFunc = unsafeBitCast(dispatchSym, to: IOHIDEventSystemClientDispatchEventFunc.self)
+            self.ioHIDCreateFunc = unsafeBitCast(createFingerSym, to: IOHIDEventCreateDigitizerFingerEventFunc.self)
+            self.ioHIDClient = clientCreate(kCFAllocatorDefault)
+            print("[TouchSimulator] Native IOHIDEvent system digitizer injector initialized.")
+        }
     }
     
+    private func injectIOHIDTouch(point: CGPoint, touchDown: Bool) {
+        guard let client = ioHIDClient, let createFunc = ioHIDCreateFunc, let dispatchFunc = ioHIDDispatchFunc else { return }
+        
+        let screen = UIScreen.main.bounds
+        let normX = Double(point.x / max(1, screen.width))
+        let normY = Double(point.y / max(1, screen.height))
+        let timestamp = mach_absolute_time()
+        
+        let eventMask: UInt32 = touchDown ? 3 : 1
+        let isRange: UInt32 = touchDown ? 1 : 0
+        let isTouch: UInt32 = touchDown ? 1 : 0
+        
+        if let event = createFunc(
+            kCFAllocatorDefault,
+            timestamp,
+            1,
+            1,
+            eventMask,
+            normX,
+            normY,
+            0.0,
+            1.0,
+            0.0,
+            isRange,
+            isTouch,
+            0,
+            0
+        ) {
+            dispatchFunc(client, event)
+        }
+    }
+
     // MARK: - API Methods
     
     /// Tap at logical coordinates (Point)
