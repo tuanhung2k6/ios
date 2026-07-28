@@ -146,6 +146,8 @@ class TouchSimulator {
             let state = selectorName.contains("Down") ? 0 : (selectorName.contains("Move") ? 1 : 2)
             _ = function(ptClass, altSel, fingerId, point, state)
         }
+    }
+    
     // MARK: - Native IOHIDEvent System Digitizer Injector
     
     private typealias IOHIDEventCreateDigitizerFingerEventFunc = @convention(c) (
