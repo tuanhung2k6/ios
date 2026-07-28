@@ -156,6 +156,13 @@ class TouchSimulator {
         print("[TouchSimulator] Tapping at (\(ix), \(iy))")
         postTouchNotification(x: CGFloat(ix), y: CGFloat(iy))
         
+        // 1. Native System IOHIDEvent Digitizer Injection
+        injectIOHIDTouch(point: CGPoint(x: ix, y: iy), touchDown: true)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
+            self.injectIOHIDTouch(point: CGPoint(x: ix, y: iy), touchDown: false)
+        }
+
+        // 2. PTFakeTouch Tweak Injection
         if ptFakeTouchLoaded {
             invokePTFakeTouch(selectorName: "touchDownAtPoint:", point: CGPoint(x: ix, y: iy))
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
@@ -163,13 +170,13 @@ class TouchSimulator {
             }
         }
         
-        // ZXTouch TCP command sequence (requires rounded integers)
+        // 3. ZXTouch TCP command sequence (requires rounded integers)
         sendZXCommand("10;\(ix);\(iy);1") // Touch Down
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
             self.sendZXCommand("12;\(ix);\(iy);1") // Touch Up
         }
         
-        // In-app UIKit action fallback
+        // 4. In-app UIKit action fallback
         DispatchQueue.main.async {
             self.performUIKitTap(at: CGPoint(x: ix, y: iy))
         }
