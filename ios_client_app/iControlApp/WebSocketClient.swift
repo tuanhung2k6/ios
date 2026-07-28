@@ -440,17 +440,13 @@ class WebSocketClient: NSObject {
                 let cleanMsg = msg.replacingOccurrences(of: "\"", with: "").replacingOccurrences(of: "'", with: "")
                 self.sendLog(message: cleanMsg)
             }
-        } else if line.contains("appRun(") || line.contains("openApp(") {
-            let funcName = line.contains("appRun") ? "appRun" : "openApp"
+        } else if line.contains("appRun(") || line.contains("openApp(") || line.contains("openUrl(") {
+            let funcName = line.contains("appRun") ? "appRun" : (line.contains("openApp") ? "openApp" : "openUrl")
             let params = parseParamsFromLine(line, funcName: funcName)
-            if let bundleId = params.first {
-                let cleanId = bundleId.replacingOccurrences(of: "\"", with: "").replacingOccurrences(of: "'", with: "")
+            if let appId = params.first {
+                let cleanId = appId.replacingOccurrences(of: "\"", with: "").replacingOccurrences(of: "'", with: "")
                 self.sendLog(message: "Mở ứng dụng: \(cleanId)")
-                if cleanId == "com.apple.mobilesafari" {
-                    DispatchQueue.main.async {
-                        UIApplication.shared.open(URL(string: "https://www.apple.com")!, options: [:], completionHandler: nil)
-                    }
-                }
+                TouchSimulator.shared.openApp(cleanId)
                 delay = 1.5
             }
         }

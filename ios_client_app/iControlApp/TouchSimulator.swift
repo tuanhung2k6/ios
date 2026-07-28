@@ -20,7 +20,12 @@ class TouchSimulator {
         let paths = [
             "/usr/lib/libPTFakeTouch.dylib",
             "/Library/MobileSubstrate/DynamicLibraries/PTFakeTouch.dylib",
-            "/var/jb/usr/lib/libPTFakeTouch.dylib" // Rootless jailbreak path
+            "/Library/Frameworks/PTFakeTouch.framework/PTFakeTouch",
+            "/var/jb/usr/lib/libPTFakeTouch.dylib", // Dopamine / Rootless jailbreak path
+            "/var/jb/Library/Frameworks/PTFakeTouch.framework/PTFakeTouch",
+            "/var/jb/Library/MobileSubstrate/DynamicLibraries/PTFakeTouch.dylib",
+            "/var/jb/usr/lib/libAutoTouch.dylib",
+            "/usr/lib/libAutoTouch.dylib"
         ]
         
         for path in paths {
@@ -30,6 +35,48 @@ class TouchSimulator {
                 break
             }
         }
+    }
+    
+    // MARK: - App Launching Helper
+    
+    /// Launch external iOS app (e.g. com.toyopagroup.picaboo for Snapchat) via LSApplicationWorkspace or URL scheme
+    @discardableResult
+    func openApp(_ bundleIdOrScheme: String) -> Bool {
+        let cleanId = bundleIdOrScheme.trimmingCharacters(in: .whitespacesAndNewlines)
+            .replacingOccurrences(of: "\"", with: "")
+            .replacingOccurrences(of: "'", with: "")
+        
+        // 1. Private iOS LSApplicationWorkspace API (Jailbroken & Sandboxed)
+        if let workspaceClass = NSClassFromString("LSApplicationWorkspace") as? NSObject.Type {
+            let selector = Selector(("defaultWorkspace"))
+            if workspaceClass.responds(to: selector) {
+                if let workspace = workspaceClass.perform(selector)?.takeUnretainedValue() {
+                    let openSel = Selector(("openApplicationWithBundleID:"))
+                    if workspace.responds(to: openSel) {
+                        _ = workspace.perform(openSel, with: cleanId)
+                        print("[TouchSimulator] Launched app via LSApplicationWorkspace: \(cleanId)")
+                        return true
+                    }
+                }
+            }
+        }
+        
+        // 2. Open via URL scheme
+        var urlStr = cleanId
+        if !urlStr.contains("://") && !urlStr.contains(".") {
+            urlStr = "\(cleanId)://"
+        }
+        if let url = URL(string: urlStr) {
+            DispatchQueue.main.async {
+                if UIApplication.shared.canOpenURL(url) {
+                    UIApplication.shared.open(url, options: [:], completionHandler: nil)
+                } else {
+                    UIApplication.shared.open(url, options: [:], completionHandler: nil)
+                }
+            }
+            return true
+        }
+        return false
     }
     
     // MARK: - ZXTouch TCP connection setup
@@ -71,31 +118,32 @@ class TouchSimulator {
     
     // MARK: - Dynamic PTFakeTouch Invoker
     
-    /// Safely invokes Objective-C PTFakeTouch class methods dynamically by casting 
-    /// the runtime IMP pointer to native Swift @convention(c) signatures.
-    /// This prevents crashes when passing structs (CGPoint) and primitives (Int) through perform Selector.
+    /// Safely invokes Objective-C PTFakeTouch class methods dynamically
     private func invokePTFakeTouch(selectorName: String, point: CGPoint, fingerId: Int = 1) {
         guard let ptClass = NSClassFromString("PTFakeTouch") else { return }
         let selector = Selector((selectorName))
         
-        guard ptClass.responds(to: selector) else {
-            print("[TouchSimulator] PTFakeTouch class does not respond to selector: \(selectorName)")
-            return
+        if ptClass.responds(to: selector), let method = class_getClassMethod(ptClass, selector) {
+            let imp = method_getImplementation(method)
+            if selectorName.contains("pointId:") || selectorName.contains("id:") {
+                typealias MultiTouchIMP = @convention(c) (AnyObject, Selector, CGPoint, Int) -> Int
+                let function = unsafeBitCast(imp, to: MultiTouchIMP.self)
+                _ = function(ptClass, selector, point, fingerId)
+            } else {
+                typealias SingleTouchIMP = @convention(c) (AnyObject, Selector, CGPoint) -> Int
+                let function = unsafeBitCast(imp, to: SingleTouchIMP.self)
+                _ = function(ptClass, selector, point)
+            }
         }
         
-        guard let method = class_getClassMethod(ptClass, selector) else { return }
-        let imp = method_getImplementation(method)
-        
-        if selectorName.contains("pointId:") || selectorName.contains("id:") {
-            // Multi-touch: takes receiver (AnyObject), selector (Selector), CGPoint, and Int
-            typealias MultiTouchIMP = @convention(c) (AnyObject, Selector, CGPoint, Int) -> Int
-            let function = unsafeBitCast(imp, to: MultiTouchIMP.self)
-            _ = function(ptClass, selector, point, fingerId)
-        } else {
-            // Single-touch: takes receiver (AnyObject), selector (Selector), CGPoint
-            typealias SingleTouchIMP = @convention(c) (AnyObject, Selector, CGPoint) -> Int
-            let function = unsafeBitCast(imp, to: SingleTouchIMP.self)
-            _ = function(ptClass, selector, point)
+        // Fallback: fakeTouchId:touchPoint:state: (0=Down, 1=Move, 2=Up)
+        let altSel = Selector(("fakeTouchId:touchPoint:state:"))
+        if ptClass.responds(to: altSel), let method = class_getClassMethod(ptClass, altSel) {
+            let imp = method_getImplementation(method)
+            typealias StateIMP = @convention(c) (AnyObject, Selector, Int, CGPoint, Int) -> Int
+            let function = unsafeBitCast(imp, to: StateIMP.self)
+            let state = selectorName.contains("Down") ? 0 : (selectorName.contains("Move") ? 1 : 2)
+            _ = function(ptClass, altSel, fingerId, point, state)
         }
     }
     
