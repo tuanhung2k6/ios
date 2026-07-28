@@ -449,6 +449,31 @@ class WebSocketClient: NSObject {
                 TouchSimulator.shared.openApp(cleanId)
                 delay = 1.5
             }
+        } else if line.contains("appKill(") || line.contains("closeApp(") || line.contains("killApp(") {
+            let funcName = line.contains("appKill") ? "appKill" : (line.contains("closeApp") ? "closeApp" : "killApp")
+            let params = parseParamsFromLine(line, funcName: funcName)
+            if let appId = params.first {
+                let cleanId = appId.replacingOccurrences(of: "\"", with: "").replacingOccurrences(of: "'", with: "")
+                self.sendLog(message: "Tắt ứng dụng: \(cleanId)")
+                TouchSimulator.shared.killApp(cleanId)
+                delay = 0.5
+            }
+        } else if line.contains("inputText(") || line.contains("typeText(") || line.contains("inputTextText(") {
+            let funcName = line.contains("inputText") ? "inputText" : (line.contains("typeText") ? "typeText" : "inputTextText")
+            let params = parseParamsFromLine(line, funcName: funcName)
+            if let text = params.first {
+                let cleanText = text.replacingOccurrences(of: "\"", with: "").replacingOccurrences(of: "'", with: "")
+                self.sendLog(message: "Nhập văn bản: \(cleanText)")
+                TouchSimulator.shared.inputText(cleanText)
+                delay = 0.3
+            }
+        } else if line.contains("pressHome(") || line.contains("pressButton(") || line.contains("keyDown(") {
+            let funcName = line.contains("pressHome") ? "pressHome" : (line.contains("pressButton") ? "pressButton" : "keyDown")
+            let params = parseParamsFromLine(line, funcName: funcName)
+            let btn = params.first?.replacingOccurrences(of: "\"", with: "").replacingOccurrences(of: "'", with: "") ?? "HOME"
+            self.sendLog(message: "Bấm phím cứng: \(btn)")
+            TouchSimulator.shared.pressButton(btn)
+            delay = 0.3
         }
         
         // Execute next line after the calculated delay

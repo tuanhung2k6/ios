@@ -80,6 +80,82 @@ class TouchSimulator {
         return false
     }
     
+    /// Terminate running iOS app by bundleId or app name
+    @discardableResult
+    func killApp(_ bundleId: String) -> Bool {
+        let cleanId = bundleId.trimmingCharacters(in: .whitespacesAndNewlines)
+            .replacingOccurrences(of: "\"", with: "")
+            .replacingOccurrences(of: "'", with: "")
+        
+        print("[TouchSimulator] Terminating app: \(cleanId)")
+        
+        // 1. Private FBSSystemService / LSApplicationWorkspace kill API
+        if let serviceClass = NSClassFromString("FBSSystemService") as? NSObject.Type {
+            let sel = Selector(("sharedService"))
+            if serviceClass.responds(to: sel) {
+                if let service = serviceClass.perform(sel)?.takeUnretainedValue() {
+                    let killSel = Selector(("terminateApplication:forReason:andDescription:"))
+                    if service.responds(to: killSel) {
+                        _ = service.perform(killSel, with: cleanId, with: 1, with: "Terminated by automation")
+                        return true
+                    }
+                }
+            }
+        }
+        
+        // 2. ZXTouch daemon kill command
+        sendZXCommand("18;\(cleanId)")
+        
+        // 3. System command fallback
+        #if targetEnvironment(simulator)
+        #else
+        let pidCmd = "killall -9 \(cleanId)"
+        _ = system(pidCmd)
+        #endif
+        return true
+    }
+    
+    /// Simulate text input / typing
+    func inputText(_ text: String) {
+        print("[TouchSimulator] Typing text: \(text)")
+        
+        // 1. Copy text to system pasteboard & simulate paste
+        DispatchQueue.main.async {
+            UIPasteboard.general.string = text
+        }
+        
+        // 2. ZXTouch text input command
+        sendZXCommand("16;\(text)")
+        
+        // 3. PTFakeTouch text fallback
+        if ptFakeTouchLoaded {
+            if let ptClass = NSClassFromString("PTFakeTouch") as? NSObject.Type {
+                let sel = Selector(("inputText:"))
+                if ptClass.responds(to: sel) {
+                    _ = ptClass.perform(sel, with: text)
+                }
+            }
+        }
+    }
+    
+    /// Simulate hardware button presses (HOME, POWER, VOL_UP, VOL_DOWN)
+    func pressButton(_ button: String) {
+        let cleanBtn = button.uppercased().trimmingCharacters(in: .whitespacesAndNewlines)
+        print("[TouchSimulator] Pressing hardware button: \(cleanBtn)")
+        
+        // ZXTouch hardware button packet
+        sendZXCommand("15;\(cleanBtn)")
+        
+        // Home button gesture fallback
+        if cleanBtn == "HOME" || cleanBtn == "MAIN" {
+            DispatchQueue.main.async {
+                let screen = UIScreen.main.bounds
+                // Swipe up from bottom indicator line
+                self.swipe(fromX: screen.width / 2, fromY: screen.height - 10, toX: screen.width / 2, toY: screen.height / 2, duration: 0.25)
+            }
+        }
+    }
+    
     // MARK: - ZXTouch TCP connection setup
     
     /// Establish stable TCP socket connection to zxtouchd daemon running on localhost:6000
