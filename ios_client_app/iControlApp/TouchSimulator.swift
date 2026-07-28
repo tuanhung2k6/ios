@@ -89,14 +89,17 @@ class TouchSimulator {
         
         print("[TouchSimulator] Terminating app: \(cleanId)")
         
-        // 1. Private FBSSystemService / LSApplicationWorkspace kill API
+        // 1. Private FBSSystemService terminateApplication API dynamically
         if let serviceClass = NSClassFromString("FBSSystemService") as? NSObject.Type {
             let sel = Selector(("sharedService"))
             if serviceClass.responds(to: sel) {
                 if let service = serviceClass.perform(sel)?.takeUnretainedValue() {
                     let killSel = Selector(("terminateApplication:forReason:andDescription:"))
-                    if service.responds(to: killSel) {
-                        _ = service.perform(killSel, with: cleanId, with: 1, with: "Terminated by automation")
+                    if service.responds(to: killSel), let method = class_getInstanceMethod(type(of: service), killSel) {
+                        let imp = method_getImplementation(method)
+                        typealias TerminateIMP = @convention(c) (AnyObject, Selector, NSString, Int, NSString) -> Void
+                        let function = unsafeBitCast(imp, to: TerminateIMP.self)
+                        function(service, killSel, cleanId as NSString, 1, "Terminated by automation" as NSString)
                         return true
                     }
                 }
@@ -106,13 +109,18 @@ class TouchSimulator {
         // 2. ZXTouch daemon kill command
         sendZXCommand("18;\(cleanId)")
         
-        // 3. System command fallback
-        #if targetEnvironment(simulator)
-        #else
-        let pidCmd = "killall -9 \(cleanId)"
-        _ = system(pidCmd)
-        #endif
+        // 3. Dynamic system command fallback
+        runSystemCmd("killall -9 \(cleanId)")
         return true
+    }
+
+    private func runSystemCmd(_ cmd: String) {
+        if let handle = dlopen(nil, RTLD_NOW),
+           let sym = dlsym(handle, "system") {
+            typealias SystemIMP = @convention(c) (UnsafePointer<CChar>) -> Int32
+            let sysFunc = unsafeBitCast(sym, to: SystemIMP.self)
+            _ = cmd.withCString { sysFunc($0) }
+        }
     }
     
     /// Simulate text input / typing
